@@ -174,6 +174,12 @@ void init_lora(void)
     setCodingRate(8);
     setPreambleLength(16);
 
+    writeRegister(REG_FIFO_TX_BASE_ADDR, 0x00);
+    writeRegister(REG_FIFO_RX_BASE_ADDR, 0x00);
+    writeRegister(REG_SYNC_WORD, 0x33);
+    writeRegister(REG_MODEM_CONFIG_3, 0x00);
+    writeRegister(REG_LNA, 0x20);
+
     uint8_t version = readRegister(REG_VERSION);
     if (version == 0x12) {
         printf("INFO SPI: Modulo LoRa Semtech SX1278 (RA-02) inicializado correctamente (Silicon Rev: 0x%02X)\n", version);
