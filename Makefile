@@ -1,4 +1,10 @@
-.PHONY: help build build-gateway build-frontend setup-backend test run clean
+VENV ?= .venv
+PYTHON ?= $(VENV)/bin/python3
+PIP ?= $(VENV)/bin/pip
+GUNICORN ?= $(VENV)/bin/gunicorn
+PYTEST ?= $(VENV)/bin/pytest
+
+.PHONY: help build build-gateway build-frontend setup-backend test run run-prod clean
 
 help:
 	@echo "TEG-GATEWAY Orchestration Makefile"
@@ -6,7 +12,7 @@ help:
 	@echo "  make build          - Build C binaries and React frontend"
 	@echo "  make build-gateway  - Compile C LoRa/SPI binaries"
 	@echo "  make build-frontend - Install & build React/Vite web interface"
-	@echo "  make setup-backend  - Install Python dependencies"
+	@echo "  make setup-backend  - Create virtualenv & install Python dependencies"
 	@echo "  make test           - Run automated test suite with pytest"
 	@echo "  make run            - Run backend in development mode"
 	@echo "  make run-prod       - Run backend with Gunicorn"
@@ -23,20 +29,24 @@ build-frontend:
 	cd webapp/frontend && npm install && npm run build
 
 setup-backend:
-	@echo "==> Instalando dependencias de Python..."
-	pip install -r requirements.txt
+	@echo "==> Configurando entorno virtual e instalando dependencias..."
+	@if [ ! -d "$(VENV)" ]; then \
+		python3 -m venv $(VENV) || { echo "Error: ejecuta 'sudo apt install python3-venv' primero"; exit 1; }; \
+	fi
+	$(PIP) install --upgrade pip
+	$(PIP) install -r requirements.txt
 
 test:
 	@echo "==> Ejecutando suite de pruebas..."
-	python3 -m pytest tests/ -v
+	PYTHONPATH=. $(PYTEST) tests/ -v
 
 run:
 	@echo "==> Iniciando servidor Flask (Dev)..."
-	python3 wsgi.py
+	PYTHONPATH=. $(PYTHON) wsgi.py
 
 run-prod:
 	@echo "==> Iniciando servidor Gunicorn (Prod)..."
-	gunicorn -c gunicorn_config.py wsgi:app
+	$(GUNICORN) -c gunicorn_config.py wsgi:app
 
 clean:
 	$(MAKE) -C gateway clean
