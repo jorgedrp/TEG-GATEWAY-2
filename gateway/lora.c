@@ -612,6 +612,32 @@ void setOCP(uint8_t mA)
     writeRegister(REG_OCP, 0x20 | (0x1F & ocpTrim));
 }
 
+uint8_t readRegister(uint8_t address)
+{
+    uint8_t out[2] = {address & 0x7f, 0x00};
+    uint8_t in[2];
+    spi_transaction(out, in, sizeof(out));
+    return in[1];
+}
+
+void writeRegister(uint8_t address, uint8_t value)
+{
+    uint8_t out[2] = {0x80 | address, value};
+    uint8_t in[2];
+    spi_transaction(out, in, sizeof(out));
+}
+
+void lora_dump_registers(void)
+{
+   int i;
+   printf("00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n");
+   for(i=0; i<0x40; i++) {
+      printf("%02X ", readRegister(i));
+      if((i & 0x0f) == 0x0f) printf("\n");
+   }
+   printf("\n");
+}
+
 int send_packet(uint8_t *data_buffer, size_t length)
 {
     struct timespec ts;
