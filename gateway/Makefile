@@ -13,7 +13,7 @@ else
 CFLAGS += -DUSE_LIBGPIOD_V2=0
 endif
 
-TARGETS = standby_mode event_mode time_mode config_mode detect_mode clock
+TARGETS = standby_mode event_mode time_mode config_mode detect_mode clock test_spi
 
 .PHONY: all clean
 
@@ -36,6 +36,9 @@ detect_mode: detect_mode.c lora.c spi.c
 
 clock: clock.c lora.c spi.c
 	$(CC) $(CFLAGS) clock.c -o $(BINDIR)/$@ -lgpiod -lpthread -lm $(LDFLAGS)
+
+test_spi: test_spi.c lora.c spi.c
+	$(CC) $(CFLAGS) test_spi.c -o $(BINDIR)/$@ -lgpiod -lpthread $(LDFLAGS)
 
 clean:
 	rm -f $(TARGETS) *.o

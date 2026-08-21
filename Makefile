@@ -4,7 +4,7 @@ PIP ?= $(VENV)/bin/pip
 GUNICORN ?= $(VENV)/bin/gunicorn
 PYTEST ?= $(VENV)/bin/pytest
 
-.PHONY: help build build-gateway build-frontend setup-backend test run run-prod clean
+.PHONY: help build build-gateway build-frontend setup-backend test test-spi run run-prod clean
 
 help:
 	@echo "TEG-GATEWAY Orchestration Makefile"
@@ -14,6 +14,7 @@ help:
 	@echo "  make build-frontend - Install & build React/Vite web interface"
 	@echo "  make setup-backend  - Create virtualenv & install Python dependencies"
 	@echo "  make test           - Run automated test suite with pytest"
+	@echo "  make test-spi       - Run hardware SPI LoRa diagnostics"
 	@echo "  make run            - Run backend in development mode"
 	@echo "  make run-prod       - Run backend with Gunicorn"
 	@echo "  make clean          - Remove build artifacts and temporary files"
@@ -23,6 +24,10 @@ build: build-gateway build-frontend
 build-gateway:
 	@echo "==> Compilando binarios C del gateway..."
 	$(MAKE) -C gateway all
+
+test-spi: build-gateway
+	@echo "==> Ejecutando diagnóstico de hardware SPI LoRa..."
+	./gateway/test_spi
 
 build-frontend:
 	@echo "==> Construyendo frontend React / Vite..."

@@ -173,6 +173,16 @@ void init_lora(void)
     enableCrc();
     setCodingRate(8);
     setPreambleLength(16);
+
+    uint8_t version = readRegister(REG_VERSION);
+    if (version == 0x12) {
+        printf("INFO SPI: Modulo LoRa Semtech SX1278 (RA-02) inicializado correctamente (Silicon Rev: 0x%02X)\n", version);
+        fflush(stdout);
+    } else {
+        fprintf(stderr, "ADVERTENCIA SPI: No se detecta respuesta del chip SX1278 en /dev/spidev0.0 (Registro 0x42 retorno 0x%02X, esperado 0x12)\n", version);
+        fprintf(stderr, "-> Revisa alimentacion 3.3V, conexiones SPI (MOSI/MISO/SCK/NSS/RST) o ejecuta 'make test-spi'.\n");
+        fflush(stderr);
+    }
 }
 
 #else
@@ -275,6 +285,16 @@ void init_lora(void)
     enableCrc();
     setCodingRate(8);
     setPreambleLength(16);
+
+    uint8_t version = readRegister(REG_VERSION);
+    if (version == 0x12) {
+        printf("INFO SPI: Modulo LoRa Semtech SX1278 (RA-02) inicializado correctamente (Silicon Rev: 0x%02X)\n", version);
+        fflush(stdout);
+    } else {
+        fprintf(stderr, "ADVERTENCIA SPI: No se detecta respuesta del chip SX1278 en /dev/spidev0.0 (Registro 0x42 retorno 0x%02X, esperado 0x12)\n", version);
+        fprintf(stderr, "-> Revisa alimentacion 3.3V, conexiones SPI (MOSI/MISO/SCK/NSS/RST) o ejecuta 'make test-spi'.\n");
+        fflush(stderr);
+    }
 }
 
 #endif
