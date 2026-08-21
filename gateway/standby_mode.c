@@ -1,7 +1,7 @@
 #include <semaphore.h>
 #include <pthread.h>
 #include <errno.h>
-#include <signal.h> // Para el manejo de señales (Ctrl+C)
+#include <signal.h>
 #include "lora.c"
 #include "spi.c"
 
@@ -9,31 +9,14 @@
 #define MODO_STANDBY        0x04
 
 pthread_t detect_thread;
-
 volatile sig_atomic_t keep_running = 1;
-
-sem_t lora_irq;
 size_t num_sensores = 1;
 
 void sigint_handler(int sig) {
+    (void)sig;
     printf("\nSeñal de interrupción (Ctrl+C) recibida. Iniciando cierre limpio...\n");
     fflush(stdout);
     keep_running = 0;
-}
-
-void retardo_milisegundos(long milisegundos) {
-    struct timespec req, rem;
-
-    // Convertir milisegundos a segundos y nanosegundos
-    req.tv_sec = milisegundos / 1000;
-    req.tv_nsec = (milisegundos % 1000) * 1000000L;
-
-    // nanosleep devuelve -1 si es interrumpida por una señal
-    while (nanosleep(&req, &rem) == -1) {
-        // Si fue interrumpida, 'rem' contiene el tiempo restante.
-        // Actualizamos 'req' con ese tiempo y volvemos a dormir.
-        req = rem;
-    }
 }
 
 void* task_detect(void *p)
@@ -96,13 +79,13 @@ void task_tx(sensor_data_t *sensor_list, size_t num_sensores)
             {
                 printf("Confirmado el cambio de modo del sensor %u.\n", sensor_list[0].dev_id);
                 fflush(stdout);
-                printf("STATUS:%u:STANDBY", sensor_list[0].dev_id);
+                printf("STATUS:%u:STANDBY\n", sensor_list[0].dev_id);
                 fflush(stdout);
                 break;
             }
             else
             {
-                printf("No se cambio de modo. Reintentando... %i\n", intentos + 1);
+                printf("No hubo respuesta del sensor %u. Reintentando... %i\n", sensor_list[0].dev_id, intentos + 1);
                 fflush(stdout);
             }
         }
@@ -116,8 +99,6 @@ void task_tx(sensor_data_t *sensor_list, size_t num_sensores)
         if(intentos == 5)
         {
             printf("No se pudo establecer comunicación con el sensor %u.\n", sensor_list[0].dev_id);
-            fflush(stdout);
-            printf("STATUS:%u:OFF", sensor_list[0].dev_id);
             fflush(stdout);
         }
     }
@@ -133,17 +114,18 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    sensor_data_t sensor_list[SENSOR_NUM];
     sensor_data_t sensor;
-
     sensor.dev_id = atoi(argv[1]);
+
+    sensor_data_t sensor_list[SENSOR_NUM];
+
+    signal(SIGINT, sigint_handler);
 
     if(sensor.dev_id == 0xFF)
     {
         for(size_t i = 0; i < SENSOR_NUM; i++)
         {
             sensor.dev_id = atoi(argv[i + 2]);
-
             sensor_list[i] = sensor;
         }
         num_sensores = SENSOR_NUM;
@@ -157,11 +139,7 @@ int main(int argc, char *argv[])
     init_lora();
     sem_init(&lora_irq, 0, 0);
 
-    if (wiringPiISR(PIN_DIO0, INT_EDGE_RISING, &packet_isr) < 0) {
-        fprintf(stderr, "No se pudo configurar la ISR: %s\n", strerror(errno));
-        fflush(stdout);
-        return 1;
-    }
+    init_lora_interrupt();
 
     task_tx(sensor_list, num_sensores);
 

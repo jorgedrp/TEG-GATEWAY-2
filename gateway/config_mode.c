@@ -6,7 +6,7 @@
 #define PAYLOAD_TX_LENGTH   0x05
 #define CONFIG 0x08
 
-void* task_tx(uint8_t sensor, uint8_t frecuency_rate, uint8_t lora_mode)
+void task_tx(uint8_t sensor, uint8_t frecuency_rate, uint8_t lora_mode)
 {
     uint8_t data[PAYLOAD_TX_LENGTH] = {sensor, CONFIG, frecuency_rate, lora_mode, 0xFF};
 
@@ -40,9 +40,9 @@ void* task_tx(uint8_t sensor, uint8_t frecuency_rate, uint8_t lora_mode)
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2)
+    if (argc < 4)
     {
-        fprintf(stderr, "Error: Faltan argumentos.\n");
+        fprintf(stderr, "Error: Faltan argumentos. Uso: %s <sensor> <frecuencia> <lora_mode>\n", argv[0]);
         return 1;
     }
 
@@ -51,14 +51,12 @@ int main(int argc, char *argv[])
     int lora_mode = atoi(argv[3]);
 
     init_lora();
-
     sem_init(&lora_irq, 0, 0);
 
-    if (wiringPiISR(PIN_DIO0, INT_EDGE_RISING, &packet_isr) < 0) {
-        fprintf(stderr, "No se pudo configurar la ISR: %s\n", strerror(errno));
-        fflush(stdout);
-        return 1;
-    }
+    init_lora_interrupt();
 
     task_tx(sensor, frecuency_rate, lora_mode);
+
+    sem_destroy(&lora_irq);
+    return 0;
 }

@@ -104,24 +104,10 @@ sem_t bme_queue_space_available;   // Semáforo de espacios vacíos para escribi
 pthread_mutex_t write_influx_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void sigint_handler(int sig) {
+    (void)sig;
     printf("\nSeñal de interrupción (Ctrl+C) recibida. Iniciando cierre limpio...\n");
     fflush(stdout);
     keep_running = 0;
-}
-
-void retardo_milisegundos(long milisegundos) {
-    struct timespec req, rem;
-
-    // Convertir milisegundos a segundos y nanosegundos
-    req.tv_sec = milisegundos / 1000;
-    req.tv_nsec = (milisegundos % 1000) * 1000000L;
-
-    // nanosleep devuelve -1 si es interrumpida por una señal
-    while (nanosleep(&req, &rem) == -1) {
-        // Si fue interrumpida, 'rem' contiene el tiempo restante.
-        // Actualizamos 'req' con ese tiempo y volvemos a dormir.
-        req = rem;
-    }
 }
 
 // Función que usa el Hilo COMUNICADOR (Productor)
@@ -954,12 +940,7 @@ int main(int argc, char *argv[])
     // Configurar el manejador de señal para Ctrl+C
     signal(SIGINT, sigint_handler);
 
-    if (wiringPiISR(PIN_DIO0, INT_EDGE_RISING, &packet_isr) < 0) {
-        fprintf(stderr, "No se pudo configurar la ISR: %s\n", strerror(errno));
-        fflush(stdout);
-        curl_global_cleanup();
-        return 1;
-    }
+    init_lora_interrupt();
 
     // Activar los nodos sensores
     task_tx(sensor_list, num_sensores);

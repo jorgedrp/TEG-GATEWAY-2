@@ -12,75 +12,202 @@
 // Variable global que retiene el timestamp de hardware capturado por el Kernel
 volatile uint64_t t2_hardware_us = 0;
 
-#define GPIO_CHIP_NAME "gpiochip0" // En Raspberry Pi suele ser siempre gpiochip0
+#define GPIO_CHIP_NAME "gpiochip0"
 
 sem_t lora_irq;
 
 void retardo_milisegundos(long milisegundos) {
     struct timespec req, rem;
 
-    // Convertir milisegundos a segundos y nanosegundos
     req.tv_sec = milisegundos / 1000;
     req.tv_nsec = (milisegundos % 1000) * 1000000L;
 
-    // nanosleep devuelve -1 si es interrumpida por una señal
     while (nanosleep(&req, &rem) == -1) {
-        // Si fue interrumpida, 'rem' contiene el tiempo restante.
-        // Actualizamos 'req' con ese tiempo y volvemos a dormir.
         req = rem;
     }
 }
 
+// Detección automática de versión de libgpiod (v2 vs v1)
+#if defined(GPIOD_EDGE_EVENT_RISING_EDGE) || (defined(GPIOD_API_VERSION) && GPIOD_API_VERSION >= 2) || defined(GPIOD_LINE_DIRECTION_INPUT)
+#define USE_LIBGPIOD_V2 1
+#else
+#define USE_LIBGPIOD_V2 0
+#endif
+
+#if USE_LIBGPIOD_V2
+
+// ==============================================================================
+// IMPLEMENTACIÓN LIBGPIOD v2 (Debian 12 Bookworm / Raspberry Pi OS Moderno)
+// ==============================================================================
+
 static void* gpiod_irq_thread(void* arg)
 {
+    (void)arg;
+    struct gpiod_chip *chip = gpiod_chip_open("/dev/gpiochip0");
+    if (!chip) {
+        chip = gpiod_chip_open("/dev/gpiochip4"); // Compatibilidad Raspberry Pi 5
+    }
+    if (!chip) {
+        perror("Error abriendo gpiochip para libgpiod v2");
+        pthread_exit(NULL);
+    }
+
+    struct gpiod_line_settings *settings = gpiod_line_settings_new();
+    if (!settings) {
+        gpiod_chip_close(chip);
+        pthread_exit(NULL);
+    }
+    gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_INPUT);
+    gpiod_line_settings_set_edge_detection(settings, GPIOD_LINE_EDGE_RISING);
+
+    struct gpiod_line_config *line_cfg = gpiod_line_config_new();
+    unsigned int offsets[1] = { PIN_DIO0 };
+    gpiod_line_config_add_line_settings(line_cfg, offsets, 1, settings);
+
+    struct gpiod_request_config *req_cfg = gpiod_request_config_new();
+    gpiod_request_config_set_consumer(req_cfg, "lora_dio0_isr");
+
+    struct gpiod_line_request *request = gpiod_chip_request_lines(chip, req_cfg, line_cfg);
+    if (!request) {
+        perror("Error solicitando línea DIO0 en libgpiod v2");
+        gpiod_request_config_free(req_cfg);
+        gpiod_line_config_free(line_cfg);
+        gpiod_line_settings_free(settings);
+        gpiod_chip_close(chip);
+        pthread_exit(NULL);
+    }
+
+    struct gpiod_edge_event_buffer *buffer = gpiod_edge_event_buffer_new(16);
+
+    while (1) {
+        int ret = gpiod_line_request_wait_edge_events(request, -1);
+        if (ret > 0) {
+            int count = gpiod_line_request_read_edge_events(request, buffer, 16);
+            for (int i = 0; i < count; i++) {
+                struct gpiod_edge_event *event = gpiod_edge_event_buffer_get_event(buffer, i);
+                if (gpiod_edge_event_get_event_type(event) == GPIOD_EDGE_EVENT_RISING_EDGE) {
+                    uint64_t ts_ns = gpiod_edge_event_get_timestamp_ns(event);
+                    t2_hardware_us = ts_ns / 1000ULL;
+                    sem_post(&lora_irq);
+                }
+            }
+        }
+    }
+
+    gpiod_edge_event_buffer_free(buffer);
+    gpiod_line_request_release(request);
+    gpiod_request_config_free(req_cfg);
+    gpiod_line_config_free(line_cfg);
+    gpiod_line_settings_free(settings);
+    gpiod_chip_close(chip);
+    return NULL;
+}
+
+void init_lora(void)
+{
+    struct gpiod_chip *chip = gpiod_chip_open("/dev/gpiochip0");
+    if (!chip) {
+        chip = gpiod_chip_open("/dev/gpiochip4");
+    }
+    if (!chip) {
+        perror("Error abriendo gpiochip en init_lora");
+        exit(EXIT_FAILURE);
+    }
+
+    struct gpiod_line_settings *settings = gpiod_line_settings_new();
+    gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_OUTPUT);
+    gpiod_line_settings_set_output_value(settings, GPIOD_LINE_VALUE_ACTIVE);
+
+    struct gpiod_line_config *line_cfg = gpiod_line_config_new();
+    unsigned int offsets[1] = { PIN_NUM_RESET };
+    gpiod_line_config_add_line_settings(line_cfg, offsets, 1, settings);
+
+    struct gpiod_request_config *req_cfg = gpiod_request_config_new();
+    gpiod_request_config_set_consumer(req_cfg, "lora_reset");
+
+    struct gpiod_line_request *request = gpiod_chip_request_lines(chip, req_cfg, line_cfg);
+    if (!request) {
+        perror("Error solicitando pin de RESET en libgpiod v2");
+        gpiod_request_config_free(req_cfg);
+        gpiod_line_config_free(line_cfg);
+        gpiod_line_settings_free(settings);
+        gpiod_chip_close(chip);
+        exit(EXIT_FAILURE);
+    }
+
+    retardo_milisegundos(200);
+
+    // Reset LOW (Inactivo / 0)
+    gpiod_line_request_set_value(request, PIN_NUM_RESET, GPIOD_LINE_VALUE_INACTIVE);
+    retardo_milisegundos(10);
+
+    // Reset HIGH (Activo / 1)
+    gpiod_line_request_set_value(request, PIN_NUM_RESET, GPIOD_LINE_VALUE_ACTIVE);
+    retardo_milisegundos(100);
+
+    gpiod_line_request_release(request);
+    gpiod_request_config_free(req_cfg);
+    gpiod_line_config_free(line_cfg);
+    gpiod_line_settings_free(settings);
+    gpiod_chip_close(chip);
+
+    tsleep();
+
+    setFrequency(lora_config.frequency);
+    setSignalBandwidth(lora_config.bw);
+    setSpreadingFactor(lora_config.sf);
+    setTxPower(lora_config.txpow, PA_OUTPUT_PA_BOOST_PIN);
+
+    enableCrc();
+    setCodingRate(8);
+    setPreambleLength(16);
+}
+
+#else
+
+// ==============================================================================
+// IMPLEMENTACIÓN LIBGPIOD v1 (Debian 10/11 Buster/Bullseye / Legacy)
+// ==============================================================================
+
+static void* gpiod_irq_thread(void* arg)
+{
+    (void)arg;
     struct gpiod_chip *chip;
     struct gpiod_line *line;
     struct gpiod_line_event event;
     int rv;
 
-    // 1. Abrir el controlador GPIO de la Raspberry Pi
     chip = gpiod_chip_open_by_name(GPIO_CHIP_NAME);
     if (!chip) {
-        perror("Error abriendo gpiochip para libgpiod");
+        perror("Error abriendo gpiochip para libgpiod v1");
         pthread_exit(NULL);
     }
 
-    // 2. Solicitar el control de la línea física (pin)
     line = gpiod_chip_get_line(chip, PIN_DIO0);
     if (!line) {
-        perror("Error obteniendo la línea GPIO");
+        perror("Error obteniendo la línea GPIO DIO0");
         gpiod_chip_close(chip);
         pthread_exit(NULL);
     }
 
-    // 3. Configurar interrupción por flanco de subida (Rising Edge)
-    // El Kernel sellará la hora en su búfer apenas ocurra el cambio de voltaje
     rv = gpiod_line_request_rising_edge_events(line, "lora_dio0_isr");
     if (rv < 0) {
-        perror("Error solicitando eventos de flanco de subida en libgpiod");
+        perror("Error solicitando eventos de flanco de subida en libgpiod v1");
         gpiod_chip_close(chip);
         pthread_exit(NULL);
     }
 
-    // 4. Bucle infinito de escucha de alta prioridad
     while (1) {
-        // Bloquea el hilo sin gastar CPU hasta que el hardware dispare el pin
         rv = gpiod_line_event_wait(line, NULL);
         if (rv < 0) {
             perror("Error esperando evento en gpiod_line_event_wait");
             continue;
         }
 
-        // Leer el evento desde la cola del Kernel
         rv = gpiod_line_event_read(line, &event);
         if (rv == 0) {
             if (event.event_type == GPIOD_LINE_EVENT_RISING_EDGE) {
-
-                // event.ts es la estructura timespec que capturó 
-                // en el pasado exacto, en el reloj CLOCK_MONOTONIC.
                 t2_hardware_us = (uint64_t)event.ts.tv_sec * 1000000ULL + (event.ts.tv_nsec / 1000ULL);
-
-                // Despierta a la máquina de estados en el hilo principal
                 sem_post(&lora_irq);
             }
         }
@@ -91,7 +218,55 @@ static void* gpiod_irq_thread(void* arg)
     return NULL;
 }
 
-// Función para inicializar el hilo desde main()
+void init_lora(void)
+{
+    struct gpiod_chip *chip;
+    struct gpiod_line *reset_line;
+
+    chip = gpiod_chip_open_by_name("gpiochip0");
+    if (!chip) {
+        perror("Error abriendo gpiochip0 en init_lora");
+        exit(EXIT_FAILURE);
+    }
+
+    reset_line = gpiod_chip_get_line(chip, PIN_NUM_RESET);
+    if (!reset_line) {
+        perror("Error obteniendo la línea de RESET");
+        gpiod_chip_close(chip);
+        exit(EXIT_FAILURE);
+    }
+
+    if (gpiod_line_request_output(reset_line, "lora_reset", 1) < 0) {
+        perror("Error configurando el pin RESET como salida");
+        gpiod_chip_close(chip);
+        exit(EXIT_FAILURE);
+    }
+
+    retardo_milisegundos(200);
+
+    gpiod_line_set_value(reset_line, 0);
+    retardo_milisegundos(10);
+    
+    gpiod_line_set_value(reset_line, 1);
+    retardo_milisegundos(100);
+
+    gpiod_line_release(reset_line);
+    gpiod_chip_close(chip);
+
+    tsleep();
+
+    setFrequency(lora_config.frequency);
+    setSignalBandwidth(lora_config.bw);
+    setSpreadingFactor(lora_config.sf);
+    setTxPower(lora_config.txpow, PA_OUTPUT_PA_BOOST_PIN);
+
+    enableCrc();
+    setCodingRate(8);
+    setPreambleLength(16);
+}
+
+#endif
+
 void init_lora_interrupt(void)
 {
     pthread_t irq_thread_id;
@@ -99,7 +274,6 @@ void init_lora_interrupt(void)
         fprintf(stderr, "Error fatal al crear el hilo de interrupción para libgpiod\n");
         exit(EXIT_FAILURE);
     }
-    // Desvincular el hilo para que corra independientemente en segundo plano
     pthread_detach(irq_thread_id);
 }
 
@@ -199,65 +373,6 @@ void config_lora(int mode)
     setTxPower(lora_config.txpow, PA_OUTPUT_PA_BOOST_PIN);
 }
 
-void init_lora(void)
-{
-    struct gpiod_chip *chip;
-    struct gpiod_line *reset_line;
-
-    // 1. Abrir el controlador GPIO nativo de la Raspberry Pi
-    chip = gpiod_chip_open_by_name("gpiochip0");
-    if (!chip) {
-        perror("Error abriendo gpiochip0 en init_lora");
-        exit(EXIT_FAILURE);
-    }
-
-    // 2. Obtener el control exclusivo sobre la línea física del pin de Reset
-    reset_line = gpiod_chip_get_line(chip, PIN_NUM_RESET);
-    if (!reset_line) {
-        perror("Error obteniendo la línea de RESET");
-        gpiod_chip_close(chip);
-        exit(EXIT_FAILURE);
-    }
-
-    // 3. Configurar el pin como SALIDA con un estado inicial en ALTO (1) de forma atómica
-    if (gpiod_line_request_output(reset_line, "lora_reset", 1) < 0) {
-        perror("Error configurando el pin RESET como salida");
-        gpiod_chip_close(chip);
-        exit(EXIT_FAILURE);
-    }
-
-    retardo_milisegundos(200);
-
-    gpiod_line_set_value(reset_line, 0); // digitalWrite LOW
-    retardo_milisegundos(10);
-    
-    gpiod_line_set_value(reset_line, 1); // digitalWrite HIGH
-    retardo_milisegundos(100);
-
-    // 5. Liberar la línea GPIO y el controlador
-    gpiod_line_release(reset_line);
-    gpiod_chip_close(chip);
-
-    tsleep();
-
-    setFrequency(lora_config.frequency);
-    setSignalBandwidth(lora_config.bw);
-    setSpreadingFactor(lora_config.sf);
-    setTxPower(lora_config.txpow, PA_OUTPUT_PA_BOOST_PIN);
-
-    enableCrc();
-    setCodingRate(8);
-    setPreambleLength(16);
-
-    writeRegister(REG_FIFO_TX_BASE_ADDR, 0x00);
-    writeRegister(REG_FIFO_RX_BASE_ADDR, 0x00);
-    writeRegister(REG_SYNC_WORD, 0x33);
-    writeRegister(REG_MODEM_CONFIG_3, 0x00);
-    writeRegister(REG_LNA, 0x20);
-
-    idle();
-}
-
 int8_t packetRssi(void)
 {
     return (readRegister(REG_PKT_RSSI_VALUE) - (lora_config.frequency < RF_MID_BAND_THRESHOLD ? RSSI_OFFSET_LF_PORT : RSSI_OFFSET_HF_PORT));
@@ -287,8 +402,11 @@ void setTxPower(uint8_t level, uint8_t outputPin)
 {
     if (PA_OUTPUT_RFO_PIN == outputPin)
     {
-        // RFO
-        if (level > 14)
+        if (level < 0)
+        {
+            level = 0;
+        }
+        else if (level > 14)
         {
             level = 14;
         }
@@ -296,18 +414,13 @@ void setTxPower(uint8_t level, uint8_t outputPin)
     }
     else
     {
-        // PA BOOST
         if (level > 17)
         {
             if (level > 20)
             {
                 level = 20;
             }
-
-            // subtract 3 from level, so 18 - 20 maps to 15 - 17
             level -= 3;
-
-            // High Power +20 dBm Operation (Semtech SX1276/77/78/79 5.4.3.)
             writeRegister(REG_PA_DAC, 0x87);
             setOCP(140);
         }
@@ -317,22 +430,25 @@ void setTxPower(uint8_t level, uint8_t outputPin)
             {
                 level = 2;
             }
-            //Default value PA_HF/LF or +17dBm
             writeRegister(REG_PA_DAC, 0x84);
             setOCP(100);
         }
-
         writeRegister(REG_PA_CONFIG, PA_BOOST | (level - 2));
     }
 }
 
 void setFrequency(uint32_t frequency)
 {
-  uint64_t frf = ((uint64_t)frequency << 19) / 32000000;
+    lora_config.frequency = frequency;
+    uint64_t frf = ((uint64_t)frequency << 19) / 32000000;
+    writeRegister(REG_FRF_MSB, (uint8_t)(frf >> 16));
+    writeRegister(REG_FRF_MID, (uint8_t)(frf >> 8));
+    writeRegister(REG_FRF_LSB, (uint8_t)(frf >> 0));
+}
 
-  writeRegister(REG_FRF_MSB, (uint8_t)(frf >> 16));
-  writeRegister(REG_FRF_MID, (uint8_t)(frf >> 8));
-  writeRegister(REG_FRF_LSB, (uint8_t)(frf >> 0));
+int32_t getSpreadingFactor(void)
+{
+    return readRegister(REG_MODEM_CONFIG_2) >> 4;
 }
 
 void setSpreadingFactor(uint8_t sf)
@@ -358,13 +474,41 @@ void setSpreadingFactor(uint8_t sf)
     }
 
     writeRegister(REG_MODEM_CONFIG_2, (readRegister(REG_MODEM_CONFIG_2) & 0x0f) | ((sf << 4) & 0xf0));
-    //setLdoFlag();
+    setLdoFlag();
+}
+
+int32_t getSignalBandwidth(void)
+{
+    uint8_t bw = readRegister(REG_MODEM_CONFIG_1) >> 4;
+    switch (bw)
+    {
+    case 0:
+        return 7.8E3;
+    case 1:
+        return 10.4E3;
+    case 2:
+        return 15.6E3;
+    case 3:
+        return 20.8E3;
+    case 4:
+        return 31.25E3;
+    case 5:
+        return 41.7E3;
+    case 6:
+        return 62.5E3;
+    case 7:
+        return 125E3;
+    case 8:
+        return 250E3;
+    case 9:
+        return 500E3;
+    }
+    return -1;
 }
 
 void setSignalBandwidth(uint32_t sbw)
 {
     int bw;
-
     if (sbw <= 7.8E3)
     {
         bw = 0;
@@ -401,74 +545,48 @@ void setSignalBandwidth(uint32_t sbw)
     {
         bw = 8;
     }
-    else /*if (sbw >= 250E3)*/
+    else
     {
         bw = 9;
     }
-
     writeRegister(REG_MODEM_CONFIG_1, (readRegister(REG_MODEM_CONFIG_1) & 0x0f) | (bw << 4));
-    //setLdoFlag();
+    setLdoFlag();
 }
 
-int32_t getSignalBandwidth(void)
+void setLdoFlag(void)
 {
-    uint8_t bw = (readRegister(REG_MODEM_CONFIG_1) >> 4);
-
-    switch (bw)
+    int32_t symbolDuration = 1000 / (getSignalBandwidth() / (1L << getSpreadingFactor()));
+    int ldoOn = symbolDuration > 16;
+    uint8_t config3 = readRegister(REG_MODEM_CONFIG_3);
+    if (ldoOn)
     {
-        case 0: return 7.8E3;
-        case 1: return 10.4E3;
-        case 2: return 15.6E3;
-        case 3: return 20.8E3;
-        case 4: return 31.25E3;
-        case 5: return 41.7E3;
-        case 6: return 62.5E3;
-        case 7: return 125E3;
-        case 8: return 250E3;
-        case 9: return 500E3;
+        config3 |= (1 << 3);
     }
-
-    return -1;
+    else
+    {
+        config3 &= ~(1 << 3);
+    }
+    writeRegister(REG_MODEM_CONFIG_3, config3);
 }
-
-uint8_t getSpreadingFactor(void)
-{
-    return readRegister(REG_MODEM_CONFIG_2) >> 4;
-}
-
-// void setLdoFlag(void)
-// {
-//     // Section 4.1.1.5
-//     long symbolDuration = 1000 / ( getSignalBandwidth() / (1L << getSpreadingFactor()) ) ;
-
-//     // Section 4.1.1.6
-//     boolean ldoOn = symbolDuration > 16;
-
-//     uint8_t config3 = readRegister(REG_MODEM_CONFIG_3);
-//     bitWrite(config3, 3, ldoOn);
-//     writeRegister(REG_MODEM_CONFIG_3, config3);
-// }
 
 void setCodingRate(uint8_t denominator)
 {
-    if (denominator < 5)
-    {
-        denominator = 5;
-    }
-    else if (denominator > 8)
-    {
-        denominator = 8;
-    }
-
     int cr = denominator - 4;
-
+    if (cr < 1)
+    {
+        cr = 1;
+    }
+    else if (cr > 4)
+    {
+        cr = 4;
+    }
     writeRegister(REG_MODEM_CONFIG_1, (readRegister(REG_MODEM_CONFIG_1) & 0xf1) | (cr << 1));
 }
 
 void setPreambleLength(uint16_t length)
 {
-  writeRegister(REG_PREAMBLE_MSB, (uint8_t)(length >> 8));
-  writeRegister(REG_PREAMBLE_LSB, (uint8_t)(length >> 0));
+    writeRegister(REG_PREAMBLE_MSB, (uint8_t)(length >> 8));
+    writeRegister(REG_PREAMBLE_LSB, (uint8_t)(length >> 0));
 }
 
 void enableCrc(void)
@@ -489,7 +607,7 @@ void setOCP(uint8_t mA)
     {
         ocpTrim = (mA - 45) / 5;
     }
-    else if (mA <=240)
+    else if (mA <= 240)
     {
         ocpTrim = (mA + 30) / 10;
     }
@@ -497,41 +615,16 @@ void setOCP(uint8_t mA)
     writeRegister(REG_OCP, 0x20 | (0x1F & ocpTrim));
 }
 
-uint8_t readRegister(uint8_t address)
-{
-    uint8_t out[2] = {address & 0x7f, 0x00};
-    uint8_t in[2];
-    spi_transaction(out, in, sizeof(out));
-    return in[1];
-}
-
-void writeRegister(uint8_t address, uint8_t value)
-{
-    uint8_t out[2] = {0x80 | address, value};
-    uint8_t in[2];
-    spi_transaction(out, in, sizeof(out));
-}
-
-void lora_dump_registers(void)
-{
-   int i;
-   printf("00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n");
-   for(i=0; i<0x40; i++) {
-      printf("%02X ", readRegister(i));
-      if((i & 0x0f) == 0x0f) printf("\n");
-   }
-   printf("\n");
-}
-
-int send_packet(uint8_t *data_buffer, size_t size)
+int send_packet(uint8_t *data_buffer, size_t length)
 {
     struct timespec ts;
 
-    writeRegister(REG_PAYLOAD_LENGTH, size);
+    writeRegister(REG_PAYLOAD_LENGTH, length);
     writeRegister(REG_FIFO_ADDR_PTR, 0x00);
+    writeRegister(REG_FIFO_TX_BASE_ADDR, 0x00);
     writeRegister(REG_DIO_MAPPING_1, 0x40); // DIO0 = TxDone
 
-    for(size_t i = 0 ; i < size ; i++)
+    for (size_t i = 0; i < length; i++)
     {
         writeRegister(REG_FIFO, data_buffer[i]);
     }
@@ -539,7 +632,7 @@ int send_packet(uint8_t *data_buffer, size_t size)
     writeRegister(REG_OP_MODE, 0x8B);
 
     clock_gettime(CLOCK_REALTIME, &ts);
-    ts.tv_sec += lora_time_out; // Timeout de 2 segundos
+    ts.tv_sec += lora_time_out;
 
     if (sem_timedwait(&lora_irq, &ts) == -1)
     {
@@ -550,6 +643,7 @@ int send_packet(uint8_t *data_buffer, size_t size)
             fflush(stdout);
             return 0;
         }
+        return 0;
     }
     else
     {
@@ -568,7 +662,7 @@ int single_receive_packet(uint8_t sender_id, uint8_t command)
     writeRegister(REG_OP_MODE, 0x8D);
 
     clock_gettime(CLOCK_REALTIME, &ts);
-    ts.tv_sec += lora_time_out; // Timeout de 2 segundos
+    ts.tv_sec += lora_time_out;
 
     if (sem_timedwait(&lora_irq, &ts) == -1)
     {
@@ -577,6 +671,7 @@ int single_receive_packet(uint8_t sender_id, uint8_t command)
             writeRegister(REG_OP_MODE, 0x89);
             return 0;
         }
+        return 0;
     }
     else
     {
