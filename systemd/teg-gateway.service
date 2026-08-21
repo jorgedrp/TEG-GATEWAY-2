@@ -1,0 +1,24 @@
+[Unit]
+Description=TEG-GATEWAY - Wireless Structural Health Monitoring Orchestrator
+After=network.target influxdb.service
+Wants=influxdb.service
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/TEG-GATEWAY
+EnvironmentFile=/home/pi/TEG-GATEWAY/.env
+ExecStart=/home/pi/TEG-GATEWAY/.venv/bin/gunicorn -c gunicorn_config.py wsgi:app
+Restart=always
+RestartSec=5s
+KillSignal=SIGTERM
+TimeoutStopSec=10s
+
+# Seguridad y Aislamiento en Linux
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/home/pi/TEG-GATEWAY/webapp/gateway.db /home/pi/TEG-GATEWAY/webapp
+
+[Install]
+WantedBy=multi-user.target

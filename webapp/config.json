@@ -1,0 +1,62 @@
+{
+    "16": {
+        "config": {
+            "frecuency": "5",
+            "lora": "3",
+            "ventana": "35",
+            "umbral": "0.2"
+        },
+        "mode": {
+            "standby": 0,
+            "event": 0,
+            "tiempo": 0,
+            "clock": 0,
+            "program": 0
+        }
+    },
+    "32": {
+        "config": {
+            "frecuency": "5",
+            "lora": "3",
+            "ventana": "35",
+            "umbral": "0.2"
+        },
+        "mode": {
+            "standby": 0,
+            "event": 0,
+            "tiempo": 0,
+            "clock": 0,
+            "program": 0
+        }
+    },
+    "48": {
+        "config": {
+            "frecuency": "5",
+            "lora": "3",
+            "ventana": "35",
+            "umbral": "0.2"
+        },
+        "mode": {
+            "standby": 0,
+            "event": 0,
+            "tiempo": 0,
+            "clock": 0,
+            "program": 0
+        }
+    },
+    "64": {
+        "config": {
+            "frecuency": "5",
+            "lora": "3",
+            "ventana": "35",
+            "umbral": "0.2"
+        },
+        "mode": {
+            "standby": 0,
+            "event": 0,
+            "tiempo": 0,
+            "clock": 0,
+            "program": 0
+        }
+    }
+}

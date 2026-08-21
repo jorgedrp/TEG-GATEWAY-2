@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LoRa Gateway</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <nav class="nav">
+        <div class="brand">
+          <h1>LoRa Gateway</h1>
+          <div class="tabs">
+            <button class="tab active"><a href="/registro" class="active">Registro</a></button>
+            <button class="tab"><a href="/explorar">Explorar</a></button>
+            <button class="tab"><a href="/">Configuración</a></button>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+        <main>
+            <div class="card">
+                <div class="table-container">
+                    <table class="logs-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Sensor</th>
+                                <th>Inicio</th>
+                                <th>Fin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fila in registros %}
+                            <tr onclick="window.location.href='/explorar?sensor={{ fila.sensor }}&inicio={{ fila.start_date }}&fin={{ fila.stop_date }}'">
+                                <td style="color: var(--muted); font-weight: 500;">{{ fila.numero_registro }}</td>
+                                <td><span class="sensor-badge">{{ fila.sensor }}</span></td>
+                                <td>{{ fila.inicio_legible }}</td>
+                                <td>{{ fila.fin_legible }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="empty-state">No hay registros guardados actualmente.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LoRa Gateway</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <nav class="nav">
+        <div class="brand">
+          <h1>LoRa Gateway</h1>
+          <div class="tabs">
+            <button class="tab"><a href="/registro">Registro</a></button>
+            <button class="tab active"><a href="/explorar" class="active">Explorar</a></button>
+            <button class="tab"><a href="/">Configuración</a></button>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+        <section class="bottom">
+            <div class="left-column">
+                <div class="card">
+                    <form id="graficar-form">
+                        <div class="form-group">
+                            <label for="select-sensor">Sensor</label>
+                            <select id="select-sensor" name="sensor">
+                                <option value="16">1</option>
+                                <option value="32">2</option>
+                                <option value="48">3</option>
+                                <option value="64">4</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="select-registro">Registro</label>
+                            <select id="select-registro" name="registro">
+                                <option value="ax">Ax</option>
+                                <option value="ay">Ay</option>
+                                <option value="az">Az</option>
+                                <option value="gx">Gx</option>
+                                <option value="gy">Gy</option>
+                                <option value="gz">Gz</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-inicio">Inicio</label>
+                            <input type="datetime-local" id="input-inicio" name="inicio" step="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-fin">Fin</label>
+                            <input type="datetime-local" id="input-fin" name="fin" step="1" required>
+                        </div>
+                        <button type="submit" class="graficar-button">Graficar</button>
+                    </form>
+                    <div>
+                        <label for="minFreq">Frecuencia Mínima (Hz):</label>
+                        <input type="number" id="minFreq" value="0">
+
+                        <label for="maxFreq">Frecuencia Máxima (Hz):</label>
+                        <input type="number" id="maxFreq" value="50">
+
+                        <button id="updateRangeBtn">Aplicar Rango</button>
+                        <button id="resetZoomBtn">Restablecer Vista</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-column">
+                <div class="card chart-container">
+                    <h3>REGISTRO EN TIEMPO</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="timeChart"></canvas>
+                        <button id="expand-time-chart-btn" class="expand-chart-btn" title="Ver más grande">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M3 8.25V3h5.25v1.5H5.06l4.47 4.47-1.06 1.06L4.5 5.06V8.25H3zM17 3v5.25h-1.5V5.06l-4.47 4.47-1.06-1.06L14.94 4.5H11.75V3H17zM3 11.75V17h5.25v-1.5H5.06l4.47-4.47-1.06-1.06L4.5 14.94V11.75H3zM11.75 17v-1.5h3.19l-4.47-4.47 1.06-1.06L15.5 14.94V11.75H17V17h-5.25z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="card chart-container">
+                    <h3>REGISTRO EN FRECUENCIA</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="frequencyChart"></canvas>
+                        <button id="expand-freq-chart-btn" class="expand-chart-btn" title="Ver más grande">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M3 8.25V3h5.25v1.5H5.06l4.47 4.47-1.06 1.06L4.5 5.06V8.25H3zM17 3v5.25h-1.5V5.06l-4.47 4.47-1.06-1.06L14.94 4.5H11.75V3H17zM3 11.75V17h5.25v-1.5H5.06l4.47-4.47-1.06-1.06L4.5 14.94V11.75H3zM11.75 17v-1.5h3.19l-4.47-4.47 1.06-1.06L15.5 14.94V11.75H17V17h-5.25z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="card chart-container">
+                    <h3>INCLINACIÓN PITCH</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="pitchChart"></canvas>
+                    </div>
+                </div>
+                <div class="card chart-container">
+                    <h3>INCLINACIÓN ROLL</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="rollChart"></canvas>
+                    </div>
+                </div>
+                <div class="card chart-container">
+                    <h3>TEMPERATURA</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="tempChart"></canvas>
+                    </div>
+                </div>
+                <div class="card chart-container">
+                    <h3>HUMEDAD</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="humeChart"></canvas>
+                    </div>
+                </div>
+                <div class="card chart-container">
+                    <h3>PRESIÓN</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="presChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='chart.js') }}"></script>
+    <script src="{{ url_for('static', filename='explorar.js') }}"></script>
+</body>
+</html>

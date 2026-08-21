@@ -1,0 +1,47 @@
+# Environment & Secrets
+.env
+webapp.key
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+gateway.db
+
+# Node / Frontend
+node_modules/
+webapp/frontend/node_modules/
+webapp/frontend/dist/
+.npm
+.vite/
+
+# C Binaries & Objects
+gateway/standby_mode
+gateway/event_mode
+gateway/time_mode
+gateway/config_mode
+gateway/detect_mode
+gateway/clock
+gateway/*.o
+gateway/bin/
+*.o
+
+# OS Files
+.DS_Store
+Thumbs.db
