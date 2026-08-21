@@ -90,7 +90,7 @@ void send_initial_sync_trigger(uint8_t sensor, uint8_t mode)
             }
             else
             {
-                printf("No se cambió de modo. Reintentando... %i\n", intentos + 1);
+                printf("No se cambió de modo. Reintentando... %zu\n", (size_t)(intentos + 1));
                 fflush(stdout);
                 intentos++;
                 retardo_milisegundos(500);
@@ -190,7 +190,7 @@ void adjust_clock(void)
         {
             if (handle_time_sync_cycle(sensor_list[i].dev_id) == 0)
             {
-                printf("Timeout. Sensor: %u | Ciclo: %d. Reintentando...\n", sensor_list[i].dev_id, k + 1);
+                printf("Timeout. Sensor: %u | Ciclo: %zu. Reintentando...\n", sensor_list[i].dev_id, k + 1);
                 fflush(stdout);
             }
 
@@ -207,7 +207,7 @@ void adjust_skew(void)
     {
         if (handle_time_sync_cycle(sensor_list[k].dev_id) == 0)
         {
-            printf("Timeout. Sensor: %u | Ciclo: %d. Reintentando...\n", sensor_list[k].dev_id, i + 1);
+            printf("Timeout. Sensor: %u | Ciclo: %zu. Reintentando...\n", sensor_list[k].dev_id, i + 1);
             fflush(stdout);
         }
         k = (k + 1) % num_sensores;
@@ -231,7 +231,7 @@ void test_mode(void)
         {
             if (handle_time_sync_cycle(sensor_list[i].dev_id) == 0)
             {
-                printf("Timeout. Sensor: %u | Ciclo: %d. Reintentando...\n", sensor_list[i].dev_id, k + 1);
+                printf("Timeout. Sensor: %u | Ciclo: %zu. Reintentando...\n", sensor_list[i].dev_id, k + 1);
                 fflush(stdout);
             }
 
