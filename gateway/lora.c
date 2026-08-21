@@ -9,12 +9,31 @@
 #include <string.h>
 #include <gpiod.h>
 
-// Variable global que retiene el timestamp de hardware capturado por el Kernel
+#ifndef USE_LIBGPIOD_V2
+#if defined(GPIOD_API_VERSION_MAJOR) && (GPIOD_API_VERSION_MAJOR >= 2)
+#define USE_LIBGPIOD_V2 1
+#else
+// Por defecto en sistemas modernos Debian 12 / Bookworm asumimos v2
+#define USE_LIBGPIOD_V2 1
+#endif
+#endif
+
+// Variables globales
 volatile uint64_t t2_hardware_us = 0;
+sem_t lora_irq;
+
+sx1278_config_t lora_config = {
+    .sf = 10,
+    .bw = 125e3,
+    .txpow = 20,
+    .implicit = 0,
+    .frequency = 433175000,
+};
+
+uint8_t _packetIndex = 0;
+uint8_t lora_time_out = 2;
 
 #define GPIO_CHIP_NAME "gpiochip0"
-
-sem_t lora_irq;
 
 void retardo_milisegundos(long milisegundos) {
     struct timespec req, rem;
@@ -26,13 +45,6 @@ void retardo_milisegundos(long milisegundos) {
         req = rem;
     }
 }
-
-// Detección automática de versión de libgpiod (v2 vs v1)
-#if defined(GPIOD_EDGE_EVENT_RISING_EDGE) || (defined(GPIOD_API_VERSION) && GPIOD_API_VERSION >= 2) || defined(GPIOD_LINE_DIRECTION_INPUT)
-#define USE_LIBGPIOD_V2 1
-#else
-#define USE_LIBGPIOD_V2 0
-#endif
 
 #if USE_LIBGPIOD_V2
 
@@ -137,11 +149,11 @@ void init_lora(void)
 
     retardo_milisegundos(200);
 
-    // Reset LOW (Inactivo / 0)
+    // Reset LOW
     gpiod_line_request_set_value(request, PIN_NUM_RESET, GPIOD_LINE_VALUE_INACTIVE);
     retardo_milisegundos(10);
 
-    // Reset HIGH (Activo / 1)
+    // Reset HIGH
     gpiod_line_request_set_value(request, PIN_NUM_RESET, GPIOD_LINE_VALUE_ACTIVE);
     retardo_milisegundos(100);
 
@@ -277,17 +289,6 @@ void init_lora_interrupt(void)
     pthread_detach(irq_thread_id);
 }
 
-sx1278_config_t lora_config = {
-    .sf = 10,
-    .bw = 125e3,
-    .txpow = 20,
-    .implicit = 0,
-    .frequency = 433175000,
-};
-
-uint8_t _packetIndex = 0;
-uint8_t lora_time_out = 2;
-
 void config_lora(int mode)
 {
     switch (mode)
@@ -402,11 +403,7 @@ void setTxPower(uint8_t level, uint8_t outputPin)
 {
     if (PA_OUTPUT_RFO_PIN == outputPin)
     {
-        if (level < 0)
-        {
-            level = 0;
-        }
-        else if (level > 14)
+        if (level > 14)
         {
             level = 14;
         }
@@ -446,9 +443,25 @@ void setFrequency(uint32_t frequency)
     writeRegister(REG_FRF_LSB, (uint8_t)(frf >> 0));
 }
 
-int32_t getSpreadingFactor(void)
+uint8_t getSpreadingFactor(void)
 {
-    return readRegister(REG_MODEM_CONFIG_2) >> 4;
+    return (uint8_t)(readRegister(REG_MODEM_CONFIG_2) >> 4);
+}
+
+void setLdoFlag(void)
+{
+    int32_t symbolDuration = 1000 / (getSignalBandwidth() / (1L << getSpreadingFactor()));
+    int ldoOn = symbolDuration > 16;
+    uint8_t config3 = readRegister(REG_MODEM_CONFIG_3);
+    if (ldoOn)
+    {
+        config3 |= (1 << 3);
+    }
+    else
+    {
+        config3 &= ~(1 << 3);
+    }
+    writeRegister(REG_MODEM_CONFIG_3, config3);
 }
 
 void setSpreadingFactor(uint8_t sf)
@@ -553,22 +566,6 @@ void setSignalBandwidth(uint32_t sbw)
     setLdoFlag();
 }
 
-void setLdoFlag(void)
-{
-    int32_t symbolDuration = 1000 / (getSignalBandwidth() / (1L << getSpreadingFactor()));
-    int ldoOn = symbolDuration > 16;
-    uint8_t config3 = readRegister(REG_MODEM_CONFIG_3);
-    if (ldoOn)
-    {
-        config3 |= (1 << 3);
-    }
-    else
-    {
-        config3 &= ~(1 << 3);
-    }
-    writeRegister(REG_MODEM_CONFIG_3, config3);
-}
-
 void setCodingRate(uint8_t denominator)
 {
     int cr = denominator - 4;
@@ -622,7 +619,7 @@ int send_packet(uint8_t *data_buffer, size_t length)
     writeRegister(REG_PAYLOAD_LENGTH, length);
     writeRegister(REG_FIFO_ADDR_PTR, 0x00);
     writeRegister(REG_FIFO_TX_BASE_ADDR, 0x00);
-    writeRegister(REG_DIO_MAPPING_1, 0x40); // DIO0 = TxDone
+    writeRegister(REG_DIO_MAPPING_1, 0x40);
 
     for (size_t i = 0; i < length; i++)
     {
@@ -658,7 +655,7 @@ int single_receive_packet(uint8_t sender_id, uint8_t command)
 
     writeRegister(REG_PAYLOAD_LENGTH, 0x05);
     writeRegister(REG_FIFO_ADDR_PTR, 0x00);
-    writeRegister(REG_DIO_MAPPING_1, 0x00); // DIO0 = RxDone
+    writeRegister(REG_DIO_MAPPING_1, 0x00);
     writeRegister(REG_OP_MODE, 0x8D);
 
     clock_gettime(CLOCK_REALTIME, &ts);

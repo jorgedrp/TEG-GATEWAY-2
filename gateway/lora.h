@@ -1,3 +1,6 @@
+#ifndef LORA_H
+#define LORA_H
+
 #include <stdio.h>
 #include <stdint.h>
 #include <time.h>
@@ -134,6 +137,8 @@ typedef struct {
 
 void config_lora(int mode);
 void init_lora(void);
+void init_lora_interrupt(void);
+void retardo_milisegundos(long milisegundos);
 int8_t packetRssi(void);
 float packetSnr(void);
 int8_t rssi(void);
@@ -145,12 +150,16 @@ void setSpreadingFactor(uint8_t sf);
 void setSignalBandwidth(uint32_t sbw);
 int32_t getSignalBandwidth(void);
 uint8_t getSpreadingFactor(void);
-// void setLdoFlag(void);
+void setLdoFlag(void);
 void setCodingRate(uint8_t denominator);
 void setPreambleLength(uint16_t length);
 void enableCrc(void);
 void disableCrc(void);
 void setOCP(uint8_t mA);
+int send_packet(uint8_t *data_buffer, size_t length);
+int single_receive_packet(uint8_t sender_id, uint8_t command);
 uint8_t readRegister(uint8_t address);
 void writeRegister(uint8_t address, uint8_t value);
 void lora_dump_registers(void);
+
+#endif // LORA_H

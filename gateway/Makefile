@@ -3,6 +3,16 @@ CFLAGS ?= -O2 -Wall -Wextra
 LDFLAGS ?=
 BINDIR ?= .
 
+# Detectar automáticamente la versión de libgpiod
+LIBGPIOD_VER := $(shell pkg-config --modversion libgpiod 2>/dev/null || echo "2.0.0")
+LIBGPIOD_MAJOR := $(shell echo $(LIBGPIOD_VER) | cut -d. -f1)
+
+ifeq ($(LIBGPIOD_MAJOR),2)
+CFLAGS += -DUSE_LIBGPIOD_V2=1
+else
+CFLAGS += -DUSE_LIBGPIOD_V2=0
+endif
+
 TARGETS = standby_mode event_mode time_mode config_mode detect_mode clock
 
 .PHONY: all clean
