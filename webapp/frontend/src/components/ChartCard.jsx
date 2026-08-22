@@ -1,8 +1,10 @@
 import React from 'react';
 import { Maximize2 } from 'lucide-react';
-import { Line } from 'react-chartjs-2';
+import UPlotChart from './UPlotChart';
 
-export default function ChartCard({ title, subtitle, data, options, onExpand, height = '260px' }) {
+export default function ChartCard({ title, subtitle, data, options, onExpand, height = 240 }) {
+  const numericHeight = typeof height === 'string' ? parseInt(height, 10) : height;
+
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col space-y-3 relative group">
       <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
@@ -22,18 +24,15 @@ export default function ChartCard({ title, subtitle, data, options, onExpand, he
         )}
       </div>
 
-      <div style={{ height }} className="relative w-full">
+      <div style={{ height: `${numericHeight}px` }} className="relative w-full">
         {data ? (
-          <Line
+          <UPlotChart
             data={data}
-            options={{
-              ...options,
-              responsive: true,
-              maintainAspectRatio: false,
-            }}
+            options={options}
+            height={numericHeight}
           />
         ) : (
-          <div className="h-full flex items-center justify-center text-xs text-slate-600 italic">
+          <div className="h-full flex items-center justify-center text-xs text-slate-600 italic bg-slate-950/20 rounded-xl">
             Sin datos para graficar
           </div>
         )}

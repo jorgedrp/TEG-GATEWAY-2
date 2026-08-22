@@ -112,9 +112,13 @@ class InfluxService:
             hum_values.append(amb_data_dict[t_obj].get("humedad"))
             pres_values.append(amb_data_dict[t_obj].get("presion"))
 
+        accel_epoch = [t.timestamp() for t in accel_times]
+        amb_epoch = [t_obj.timestamp() for t_obj in sorted_amb_times]
+
         return {
             "timeSeries": {
                 "time": accel_timestamps_formatted,
+                "timestamps_epoch": accel_epoch,
                 "data": accel_values
             },
             "frequencySeries": {
@@ -124,6 +128,7 @@ class InfluxService:
             },
             "ambSeries": {
                 "time": amb_times_formatted,
+                "timestamps_epoch": amb_epoch,
                 "temp": temp_values,
                 "hum": hum_values,
                 "pres": pres_values

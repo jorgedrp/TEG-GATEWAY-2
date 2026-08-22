@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Maximize2 } from 'lucide-react';
-import { Line } from 'react-chartjs-2';
+import UPlotChart from './UPlotChart';
 
 export default function FullscreenChartModal({ isOpen, onClose, title, chartData, chartOptions }) {
   if (!isOpen) return null;
@@ -22,17 +22,18 @@ export default function FullscreenChartModal({ isOpen, onClose, title, chartData
           </button>
         </div>
 
-        {/* Canvas container */}
-        <div className="flex-1 p-6 relative bg-slate-950/40">
-          {chartData && (
-            <Line
+        {/* Chart container */}
+        <div className="flex-1 p-6 relative bg-slate-950/40 w-full h-full min-h-0 flex flex-col justify-center">
+          {chartData ? (
+            <UPlotChart
               data={chartData}
-              options={{
-                ...chartOptions,
-                responsive: true,
-                maintainAspectRatio: false,
-              }}
+              options={chartOptions}
+              className="w-full h-full"
             />
+          ) : (
+            <div className="h-full flex items-center justify-center text-sm text-slate-500 italic">
+              Sin datos disponibles
+            </div>
           )}
         </div>
       </div>

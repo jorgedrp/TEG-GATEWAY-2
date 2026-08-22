@@ -110,11 +110,13 @@ class KalmanFilter6DoF:
             df_final.index = df_final.index.tz_convert(Config.TIMEZONE)
 
         labels = df_final.index.strftime('%H:%M:%S').tolist()
+        timestamps_epoch = [t.timestamp() for t in df_final.index]
         roll_data = df_final['roll_kalman'].round(2).tolist()
         pitch_data = df_final['pitch_kalman'].round(2).tolist()
 
         return {
             "labels": labels,
+            "timestamps_epoch": timestamps_epoch,
             "roll": roll_data,
             "pitch": pitch_data
         }

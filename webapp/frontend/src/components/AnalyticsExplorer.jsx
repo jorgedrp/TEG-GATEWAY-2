@@ -1,31 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-} from 'chart.js';
-import { Play, RotateCcw, Filter, Activity, Thermometer, Droplets, Gauge, AlertCircle, Zap } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Play, RotateCcw, Activity, Zap, AlertCircle } from 'lucide-react';
 import { api } from '../services/api';
 import ChartCard from './ChartCard';
 import FullscreenChartModal from './FullscreenChartModal';
-
-// Registrar componentes de Chart.js
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
 
 export default function AnalyticsExplorer({ initialParams }) {
   const [sensor, setSensor] = useState('16');
@@ -35,7 +12,7 @@ export default function AnalyticsExplorer({ initialParams }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Datos recibidos
+  // Datos recibidos del backend
   const [telemetryData, setTelemetryData] = useState(null);
   const [inclinacionData, setInclinacionData] = useState(null);
 
@@ -54,16 +31,14 @@ export default function AnalyticsExplorer({ initialParams }) {
     }
 
     if (initialParams?.inicio && initialParams?.fin) {
-      // Convertir ms a formato datetime-local
       const toLocalISO = (ms) => {
-        const d = new Date(parseInt(ms));
+        const d = new Date(parseInt(ms, 10));
         const offset = d.getTimezoneOffset() * 60000;
         return new Date(d.getTime() - offset).toISOString().slice(0, 19);
       };
       setStartTime(toLocalISO(initialParams.inicio));
       setStopTime(toLocalISO(initialParams.fin));
     } else {
-      // Default: Últimos 5 minutos
       const now = new Date();
       const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000);
       const offset = now.getTimezoneOffset() * 60000;
@@ -89,9 +64,7 @@ export default function AnalyticsExplorer({ initialParams }) {
       const startISO = startTime ? new Date(startTime).toISOString() : '-5m';
       const stopISO = stopTime ? new Date(stopTime).toISOString() : 'now()';
 
-      // 1. Telemetría Aceleración / Ambiente / FFT
       const telPromise = api.getTelemetryData(startISO, stopISO, channel, sensor);
-      // 2. Inclinación Kalman 6-DoF
       const incPromise = api.getInclinacionData(startISO, stopISO, sensor).catch(() => null);
 
       const [telRes, incRes] = await Promise.all([telPromise, incPromise]);
@@ -106,133 +79,203 @@ export default function AnalyticsExplorer({ initialParams }) {
     }
   };
 
-  // 1. Time Chart Data
-  const timeChartData = telemetryData ? {
-    labels: telemetryData.timeSeries.time,
-    datasets: [{
-      label: `Registro ${channel.toUpperCase()}`,
-      data: telemetryData.timeSeries.data,
-      borderColor: 'rgb(56, 189, 248)',
-      backgroundColor: 'rgba(56, 189, 248, 0.1)',
-      borderWidth: 1.5,
-      pointRadius: 0.8,
-      fill: true,
-    }]
-  } : null;
+  // ==========================================
+  // 1. Time-Series Chart (uPlot data & options)
+  // ==========================================
+  const timeChartData = useMemo(() => {
+    if (!telemetryData?.timeSeries?.data?.length) return null;
 
-  const timeChartOptions = {
+    let x = telemetryData.timeSeries.timestamps_epoch;
+    if (!x || x.length !== telemetryData.timeSeries.data.length) {
+      // Fallback: timestamps sintéticos secuenciales
+      const start = Date.now() / 1000 - telemetryData.timeSeries.data.length * 0.005;
+      x = telemetryData.timeSeries.data.map((_, i) => start + i * 0.005);
+    }
+
+    return [x, telemetryData.timeSeries.data];
+  }, [telemetryData]);
+
+  const timeChartOptions = useMemo(() => ({
     scales: {
-      x: { title: { display: true, text: 'Tiempo (Local)', color: '#94a3b8' }, ticks: { color: '#64748b', maxTicksLimit: 10 }, grid: { color: '#1e293b' } },
-      y: { title: { display: true, text: channel.startsWith('g') ? 'Velocidad Angular (°/s)' : 'Aceleración (g)', color: '#94a3b8' }, ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
+      x: { time: true },
+      y: { auto: true },
     },
-    plugins: { legend: { display: false } }
-  };
+    series: [
+      {},
+      {
+        label: `Canal ${channel.toUpperCase()}`,
+        stroke: '#38bdf8',
+        width: 1.5,
+        fill: 'rgba(56, 189, 248, 0.08)',
+        points: { show: false },
+      },
+    ],
+    axes: [
+      { stroke: '#94a3b8', grid: { stroke: '#1e293b', width: 1 } },
+      {
+        stroke: '#94a3b8',
+        grid: { stroke: '#1e293b', width: 1 },
+        label: channel.startsWith('g') ? 'Velocidad Angular (°/s)' : 'Aceleración (g)',
+        labelFont: '11px Inter, system-ui, sans-serif',
+        labelStroke: '#94a3b8',
+      },
+    ],
+  }), [channel]);
 
-  // 2. FFT Chart Data (Filtrado por rango de frecuencia)
-  const filteredFreqIndices = telemetryData?.frequencySeries?.frequencies
-    ?.map((f, i) => (f >= appliedFreqRange.min && f <= appliedFreqRange.max ? i : -1))
-    ?.filter((i) => i !== -1) || [];
+  // ==========================================
+  // 2. FFT Frequency Chart (uPlot data & options)
+  // ==========================================
+  const freqChartData = useMemo(() => {
+    if (!telemetryData?.frequencySeries?.frequencies?.length) return null;
 
-  const freqChartData = telemetryData ? {
-    labels: filteredFreqIndices.map((i) => telemetryData.frequencySeries.frequencies[i]),
-    datasets: [{
-      label: 'Magnitud Espectral (ACF Scaled)',
-      data: filteredFreqIndices.map((i) => telemetryData.frequencySeries.magnitude[i]),
-      borderColor: 'rgb(244, 63, 94)',
-      backgroundColor: 'rgba(244, 63, 94, 0.15)',
-      borderWidth: 1.5,
-      pointRadius: 1,
-      fill: true,
-    }]
-  } : null;
+    const freqs = telemetryData.frequencySeries.frequencies;
+    const mags = telemetryData.frequencySeries.magnitude;
 
-  const freqChartOptions = {
+    const filteredX = [];
+    const filteredY = [];
+
+    for (let i = 0; i < freqs.length; i++) {
+      if (freqs[i] >= appliedFreqRange.min && freqs[i] <= appliedFreqRange.max) {
+        filteredX.push(freqs[i]);
+        filteredY.push(mags[i]);
+      }
+    }
+
+    if (filteredX.length === 0) return null;
+    return [filteredX, filteredY];
+  }, [telemetryData, appliedFreqRange]);
+
+  const freqChartOptions = useMemo(() => ({
     scales: {
-      x: { title: { display: true, text: 'Frecuencia (Hz)', color: '#94a3b8' }, ticks: { color: '#64748b', maxTicksLimit: 12 }, grid: { color: '#1e293b' } },
-      y: { title: { display: true, text: 'Magnitud Espectral', color: '#94a3b8' }, beginAtZero: true, ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
+      x: { time: false, auto: true },
+      y: { auto: true },
     },
-    plugins: { legend: { display: false } }
-  };
+    series: [
+      { label: 'Frecuencia (Hz)' },
+      {
+        label: 'Magnitud (ACF)',
+        stroke: '#f43f5e',
+        width: 1.5,
+        fill: 'rgba(244, 63, 94, 0.12)',
+        points: { show: false },
+      },
+    ],
+    axes: [
+      { stroke: '#94a3b8', grid: { stroke: '#1e293b', width: 1 }, label: 'Frecuencia (Hz)', labelFont: '11px Inter, sans-serif', labelStroke: '#94a3b8' },
+      { stroke: '#94a3b8', grid: { stroke: '#1e293b', width: 1 }, label: 'Magnitud Espectral', labelFont: '11px Inter, sans-serif', labelStroke: '#94a3b8' },
+    ],
+  }), []);
 
-  // 3. Pitch Chart
-  const pitchChartData = inclinacionData ? {
-    labels: inclinacionData.labels,
-    datasets: [{
-      label: 'Inclinación Pitch (°)',
-      data: inclinacionData.pitch,
-      borderColor: 'rgb(251, 146, 60)',
-      backgroundColor: 'rgba(251, 146, 60, 0.1)',
-      borderWidth: 1.5,
-      pointRadius: 1,
-    }]
-  } : null;
+  // ==========================================
+  // 3. Inclinación Kalman (Pitch & Roll)
+  // ==========================================
+  const pitchChartData = useMemo(() => {
+    if (!inclinacionData?.pitch?.length) return null;
 
-  // 4. Roll Chart
-  const rollChartData = inclinacionData ? {
-    labels: inclinacionData.labels,
-    datasets: [{
-      label: 'Inclinación Roll (°)',
-      data: inclinacionData.roll,
-      borderColor: 'rgb(168, 85, 247)',
-      backgroundColor: 'rgba(168, 85, 247, 0.1)',
-      borderWidth: 1.5,
-      pointRadius: 1,
-    }]
-  } : null;
+    let x = inclinacionData.timestamps_epoch;
+    if (!x || x.length !== inclinacionData.pitch.length) {
+      const now = Date.now() / 1000;
+      x = inclinacionData.pitch.map((_, i) => now - (inclinacionData.pitch.length - i));
+    }
+    return [x, inclinacionData.pitch];
+  }, [inclinacionData]);
 
-  const angleOptions = {
-    scales: {
-      x: { ticks: { color: '#64748b', maxTicksLimit: 8 }, grid: { color: '#1e293b' } },
-      y: { title: { display: true, text: 'Ángulo (°)', color: '#94a3b8' }, ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
-    },
-    plugins: { legend: { display: false } }
-  };
+  const pitchChartOptions = useMemo(() => ({
+    scales: { x: { time: true }, y: { auto: true } },
+    series: [
+      {},
+      {
+        label: 'Inclinación Pitch (°)',
+        stroke: '#fb923c',
+        width: 1.5,
+        fill: 'rgba(251, 146, 60, 0.08)',
+        points: { show: false },
+      },
+    ],
+    axes: [
+      { stroke: '#94a3b8', grid: { stroke: '#1e293b', width: 1 } },
+      { stroke: '#94a3b8', grid: { stroke: '#1e293b', width: 1 }, label: 'Ángulo Pitch (°)', labelFont: '11px Inter, sans-serif', labelStroke: '#94a3b8' },
+    ],
+  }), []);
 
-  // 5. Temperature Chart
-  const tempChartData = telemetryData?.ambSeries ? {
-    labels: telemetryData.ambSeries.time,
-    datasets: [{
-      label: 'Temperatura (°C)',
-      data: telemetryData.ambSeries.temp,
-      borderColor: 'rgb(239, 68, 68)',
-      backgroundColor: 'rgba(239, 68, 68, 0.1)',
-      borderWidth: 1.5,
-      pointRadius: 1,
-    }]
-  } : null;
+  const rollChartData = useMemo(() => {
+    if (!inclinacionData?.roll?.length) return null;
 
-  // 6. Humidity Chart
-  const humeChartData = telemetryData?.ambSeries ? {
-    labels: telemetryData.ambSeries.time,
-    datasets: [{
-      label: 'Humedad (%)',
-      data: telemetryData.ambSeries.hum,
-      borderColor: 'rgb(59, 130, 246)',
-      backgroundColor: 'rgba(59, 130, 246, 0.1)',
-      borderWidth: 1.5,
-      pointRadius: 1,
-    }]
-  } : null;
+    let x = inclinacionData.timestamps_epoch;
+    if (!x || x.length !== inclinacionData.roll.length) {
+      const now = Date.now() / 1000;
+      x = inclinacionData.roll.map((_, i) => now - (inclinacionData.roll.length - i));
+    }
+    return [x, inclinacionData.roll];
+  }, [inclinacionData]);
 
-  // 7. Pressure Chart
-  const presChartData = telemetryData?.ambSeries ? {
-    labels: telemetryData.ambSeries.time,
-    datasets: [{
-      label: 'Presión (hPa)',
-      data: telemetryData.ambSeries.pres,
-      borderColor: 'rgb(34, 197, 94)',
-      backgroundColor: 'rgba(34, 197, 94, 0.1)',
-      borderWidth: 1.5,
-      pointRadius: 1,
-    }]
-  } : null;
+  const rollChartOptions = useMemo(() => ({
+    scales: { x: { time: true }, y: { auto: true } },
+    series: [
+      {},
+      {
+        label: 'Inclinación Roll (°)',
+        stroke: '#a855f7',
+        width: 1.5,
+        fill: 'rgba(168, 85, 247, 0.08)',
+        points: { show: false },
+      },
+    ],
+    axes: [
+      { stroke: '#94a3b8', grid: { stroke: '#1e293b', width: 1 } },
+      { stroke: '#94a3b8', grid: { stroke: '#1e293b', width: 1 }, label: 'Ángulo Roll (°)', labelFont: '11px Inter, sans-serif', labelStroke: '#94a3b8' },
+    ],
+  }), []);
 
-  const envOptions = (unit) => ({
-    scales: {
-      x: { ticks: { color: '#64748b', maxTicksLimit: 8 }, grid: { color: '#1e293b' } },
-      y: { title: { display: true, text: unit, color: '#94a3b8' }, ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
-    },
-    plugins: { legend: { display: false } }
+  // ==========================================
+  // 4. Variables Ambientales BME280
+  // ==========================================
+  const tempChartData = useMemo(() => {
+    if (!telemetryData?.ambSeries?.temp?.length) return null;
+    let x = telemetryData.ambSeries.timestamps_epoch;
+    if (!x || x.length !== telemetryData.ambSeries.temp.length) {
+      const now = Date.now() / 1000;
+      x = telemetryData.ambSeries.temp.map((_, i) => now - (telemetryData.ambSeries.temp.length - i) * 60);
+    }
+    return [x, telemetryData.ambSeries.temp];
+  }, [telemetryData]);
+
+  const humeChartData = useMemo(() => {
+    if (!telemetryData?.ambSeries?.hum?.length) return null;
+    let x = telemetryData.ambSeries.timestamps_epoch;
+    if (!x || x.length !== telemetryData.ambSeries.hum.length) {
+      const now = Date.now() / 1000;
+      x = telemetryData.ambSeries.hum.map((_, i) => now - (telemetryData.ambSeries.hum.length - i) * 60);
+    }
+    return [x, telemetryData.ambSeries.hum];
+  }, [telemetryData]);
+
+  const presChartData = useMemo(() => {
+    if (!telemetryData?.ambSeries?.pres?.length) return null;
+    let x = telemetryData.ambSeries.timestamps_epoch;
+    if (!x || x.length !== telemetryData.ambSeries.pres.length) {
+      const now = Date.now() / 1000;
+      x = telemetryData.ambSeries.pres.map((_, i) => now - (telemetryData.ambSeries.pres.length - i) * 60);
+    }
+    return [x, telemetryData.ambSeries.pres];
+  }, [telemetryData]);
+
+  const envOptions = (label, stroke, fill) => ({
+    scales: { x: { time: true }, y: { auto: true } },
+    series: [
+      {},
+      {
+        label,
+        stroke,
+        width: 1.5,
+        fill,
+        points: { show: false },
+      },
+    ],
+    axes: [
+      { stroke: '#94a3b8', grid: { stroke: '#1e293b', width: 1 } },
+      { stroke: '#94a3b8', grid: { stroke: '#1e293b', width: 1 }, label, labelFont: '10px Inter, sans-serif', labelStroke: '#94a3b8' },
+    ],
   });
 
   const openFullscreen = (title, data, options) => {
@@ -386,7 +429,7 @@ export default function AnalyticsExplorer({ initialParams }) {
               {telemetryData.frequencySeries.peak_frequency} Hz
             </span>
           </div>
-          <span className="text-slate-400 hidden sm:inline">Espectro FFT con ventaneo Hann y corrección ACF</span>
+          <span className="text-slate-400 hidden sm:inline">Espectro FFT con ventaneo Hann y corrección ACF (uPlot ⚡)</span>
         </div>
       )}
 
@@ -394,10 +437,10 @@ export default function AnalyticsExplorer({ initialParams }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard
           title={`Registro en el Tiempo (${channel.toUpperCase()})`}
-          subtitle="Señal de aceleración / giroscopio cruda de alta frecuencia"
+          subtitle="Señal de aceleración / giroscopio de alta frecuencia (uPlot ⚡)"
           data={timeChartData}
           options={timeChartOptions}
-          height="280px"
+          height={260}
           onExpand={() => openFullscreen(`Registro en el Tiempo (${channel.toUpperCase()})`, timeChartData, timeChartOptions)}
         />
 
@@ -406,7 +449,7 @@ export default function AnalyticsExplorer({ initialParams }) {
           subtitle={`Densidad espectral con ventana Hann (Rango: ${appliedFreqRange.min} - ${appliedFreqRange.max} Hz)`}
           data={freqChartData}
           options={freqChartOptions}
-          height="280px"
+          height={260}
           onExpand={() => openFullscreen('Espectro de Frecuencia (FFT)', freqChartData, freqChartOptions)}
         />
       </div>
@@ -417,18 +460,18 @@ export default function AnalyticsExplorer({ initialParams }) {
           title="Inclinación Pitch (Filtro de Kalman)"
           subtitle="Estimación angular sobre el eje transversal Y sin deriva de giroscopio"
           data={pitchChartData}
-          options={angleOptions}
-          height="220px"
-          onExpand={() => openFullscreen('Inclinación Pitch (Filtro de Kalman)', pitchChartData, angleOptions)}
+          options={pitchChartOptions}
+          height={220}
+          onExpand={() => openFullscreen('Inclinación Pitch (Filtro de Kalman)', pitchChartData, pitchChartOptions)}
         />
 
         <ChartCard
           title="Inclinación Roll (Filtro de Kalman)"
           subtitle="Estimación angular sobre el eje longitudinal X sin deriva de giroscopio"
           data={rollChartData}
-          options={angleOptions}
-          height="220px"
-          onExpand={() => openFullscreen('Inclinación Roll (Filtro de Kalman)', rollChartData, angleOptions)}
+          options={rollChartOptions}
+          height={220}
+          onExpand={() => openFullscreen('Inclinación Roll (Filtro de Kalman)', rollChartData, rollChartOptions)}
         />
       </div>
 
@@ -438,27 +481,27 @@ export default function AnalyticsExplorer({ initialParams }) {
           title="Temperatura BME280"
           subtitle="Sensor ambiental digital (°C)"
           data={tempChartData}
-          options={envOptions('Temperatura (°C)')}
-          height="180px"
-          onExpand={() => openFullscreen('Temperatura Ambiental (°C)', tempChartData, envOptions('Temperatura (°C)'))}
+          options={envOptions('Temperatura (°C)', '#ef4444', 'rgba(239, 68, 68, 0.08)')}
+          height={180}
+          onExpand={() => openFullscreen('Temperatura Ambiental (°C)', tempChartData, envOptions('Temperatura (°C)', '#ef4444', 'rgba(239, 68, 68, 0.08)'))}
         />
 
         <ChartCard
           title="Humedad Relativa"
           subtitle="Humedad porcentual (%)"
           data={humeChartData}
-          options={envOptions('Humedad (%)')}
-          height="180px"
-          onExpand={() => openFullscreen('Humedad Relativa (%)', humeChartData, envOptions('Humedad (%)'))}
+          options={envOptions('Humedad (%)', '#3b82f6', 'rgba(59, 130, 246, 0.08)')}
+          height={180}
+          onExpand={() => openFullscreen('Humedad Relativa (%)', humeChartData, envOptions('Humedad (%)', '#3b82f6', 'rgba(59, 130, 246, 0.08)'))}
         />
 
         <ChartCard
           title="Presión Barométrica"
           subtitle="Presión atmosférica (hPa)"
           data={presChartData}
-          options={envOptions('Presión (hPa)')}
-          height="180px"
-          onExpand={() => openFullscreen('Presión Barométrica (hPa)', presChartData, envOptions('Presión (hPa)'))}
+          options={envOptions('Presión (hPa)', '#22c55e', 'rgba(34, 197, 94, 0.08)')}
+          height={180}
+          onExpand={() => openFullscreen('Presión Barométrica (hPa)', presChartData, envOptions('Presión (hPa)', '#22c55e', 'rgba(34, 197, 94, 0.08)'))}
         />
       </div>
 
