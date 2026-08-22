@@ -34,9 +34,9 @@ const uint8_t sensores[4] = {0x10, 0x20, 0x30, 0x40};
 
 static inline uint64_t rpi_timer_get_time_us(void)
 {
-struct timespec ts;
-clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)(ts.tv_nsec / 1000ULL);
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)(ts.tv_nsec / 1000ULL);
 }
 
 static inline uint64_t tv_to_us(const struct timeval *tv)
