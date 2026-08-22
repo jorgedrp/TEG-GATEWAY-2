@@ -11,7 +11,7 @@
 
 Central gateway and orchestrator server for an open, low-cost **Wireless Sensor Network for Structural Health Monitoring (WSN-SHM)**.
 
-This system runs on a **Raspberry Pi 3 Model B / 4B** equipped with a Semtech SX1278 LoRa transceiver. It manages a distributed cluster of custom smart sensor nodes, provides sub-millisecond network clock synchronization, streams high-frequency inertial and environmental telemetry into **InfluxDB v2**, persists network state and measurement catalogues in **SQLite (WAL)**, and serves a modern reactive dashboard (**React + Vite + Tailwind CSS + Chart.js**) with an advanced **Digital Signal Processing (DSP)** engine (FFT with Hann/ACF windowing and 2-State Kalman Filter 6-DoF sensor fusion for structural tilt estimation).
+This system runs on a **Raspberry Pi 3 Model B / 4B** equipped with a Semtech SX1278 LoRa transceiver. It manages a distributed cluster of custom smart sensor nodes, provides sub-millisecond network clock synchronization, streams high-frequency inertial and environmental telemetry into **InfluxDB v2**, persists network state and measurement catalogues in **SQLite (WAL)**, and serves a modern reactive dashboard (**React + Vite + Tailwind CSS + uPlot**) with an advanced **Digital Signal Processing (DSP)** engine (FFT with Hann/ACF windowing and 2-State Kalman Filter 6-DoF sensor fusion for structural tilt estimation).
 
 > 🔗 **Companion Repository (Sensor Nodes):**  
 > Firmware and hardware design for the ESP32-S3 smart sensor nodes can be found at **[TEG-NODE](https://github.com/jorgedrp/TEG-NODE)**.
@@ -73,7 +73,7 @@ This system runs on a **Raspberry Pi 3 Model B / 4B** equipped with a Semtech SX
 |    ├── Tilt Estimator      : 2-State Kalman Filter 6-DoF sensor fusion            |
 |    └── SSE Broadcaster     : Live console log pub/sub streaming                   |
 |                                                                                   |
-|  [ Modern Web Dashboard (React 18 + Vite + Tailwind CSS + Chart.js) ]             |
+|  [ Modern Web Dashboard (React 18 + Vite + Tailwind CSS + uPlot) ]                |
 +-----------------------------------------------------------------------------------+
 ```
 
@@ -122,11 +122,17 @@ This system runs on a **Raspberry Pi 3 Model B / 4B** equipped with a Semtech SX
 
 ### 2. Tilt & Inclination Estimation (2-State Kalman Filter)
 - **State Vector:** Angle $\theta$ and Gyroscope Bias $b$:
-  $$\mathbf{x}_k = \begin{bmatrix} \theta_k \\ b_k \end{bmatrix}$$
+$$
+  \mathbf{x}_k = \begin{bmatrix} \theta_k \\ b_k \end{bmatrix}
+$$
 - **Prediction Phase:**
-  $$\hat{\theta}_{k|k-1} = \hat{\theta}_{k-1|k-1} + (\omega_k - \hat{b}_{k-1|k-1}) \Delta t$$
+$$
+  \hat{\theta}_{k|k-1} = \hat{\theta}_{k-1|k-1} + (\omega_k - \hat{b}_{k-1|k-1}) \Delta t
+$$
 - **Measurement Update:**
-  $$\text{Roll} = \text{atan2}(A_y, A_z), \quad \text{Pitch} = \text{atan2}(-A_x, \sqrt{A_y^2 + A_z^2})$$
+$$
+  \text{Roll} = \text{atan2}(A_y, A_z), \quad \text{Pitch} = \text{atan2}(-A_x, \sqrt{A_y^2 + A_z^2})
+$$
 
 ---
 
