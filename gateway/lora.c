@@ -71,7 +71,7 @@ static void* gpiod_irq_thread(void* arg)
     }
     gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_INPUT);
     gpiod_line_settings_set_edge_detection(settings, GPIOD_LINE_EDGE_RISING);
-    gpiod_line_settings_set_event_clock(settings, GPIOD_LINE_CLOCK_MONOTONIC);
+    gpiod_line_settings_set_event_clock(settings, GPIOD_LINE_CLOCK_REALTIME);
 
     struct gpiod_line_config *line_cfg = gpiod_line_config_new();
     unsigned int offsets[1] = { PIN_DIO0 };
@@ -275,7 +275,7 @@ void init_lora(void)
 
     gpiod_line_set_value(reset_line, 0);
     retardo_milisegundos(10);
-    
+
     gpiod_line_set_value(reset_line, 1);
     retardo_milisegundos(100);
 

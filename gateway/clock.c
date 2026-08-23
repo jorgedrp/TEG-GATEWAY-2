@@ -35,7 +35,7 @@ const uint8_t sensores[4] = {0x10, 0x20, 0x30, 0x40};
 static inline uint64_t rpi_timer_get_time_us(void)
 {
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+    clock_gettime(CLOCK_REALTIME, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)(ts.tv_nsec / 1000ULL);
 }
 
@@ -119,7 +119,7 @@ int handle_time_sync_cycle(uint8_t sensor)
     writeRegister(REG_OP_MODE, 0x8D);
 
     struct timespec ts;
-    
+
     clock_gettime(CLOCK_REALTIME, &ts);
     ts.tv_sec += 2;
 
@@ -164,7 +164,7 @@ int handle_time_sync_cycle(uint8_t sensor)
             }
 
             writeRegister(REG_OP_MODE, 0x8B);
-            
+
             struct timespec ts;
             clock_gettime(CLOCK_REALTIME, &ts);
             ts.tv_sec += 1;
@@ -173,7 +173,7 @@ int handle_time_sync_cycle(uint8_t sensor)
             {
                 return 0; // Timeout
             }
-            
+
             writeRegister(REG_IRQ_FLAGS, IRQ_TX_DONE_MASK);
 
             return 1;
