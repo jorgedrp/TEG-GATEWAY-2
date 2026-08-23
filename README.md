@@ -122,14 +122,19 @@ This system runs on a **Raspberry Pi 3 Model B / 4B** equipped with a Semtech SX
 
 ### 2. Tilt & Inclination Estimation (2-State Kalman Filter)
 - **State Vector:** Angle $\theta$ and Gyroscope Bias $b$:
+
 $$
   \mathbf{x}_k = \begin{bmatrix} \theta_k \\ b_k \end{bmatrix}
 $$
+
 - **Prediction Phase:**
+
 $$
   \hat{\theta}_{k|k-1} = \hat{\theta}_{k-1|k-1} + (\omega_k - \hat{b}_{k-1|k-1}) \Delta t
 $$
+
 - **Measurement Update:**
+
 $$
   \text{Roll} = \text{atan2}(A_y, A_z), \quad \text{Pitch} = \text{atan2}(-A_x, \sqrt{A_y^2 + A_z^2})
 $$
