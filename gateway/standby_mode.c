@@ -13,6 +13,7 @@
 #define MODO_STANDBY        0x04
 
 pthread_t detect_thread;
+sem_t lora_irq;
 
 volatile sig_atomic_t keep_running = 1;
 size_t num_sensores = 1;
@@ -38,7 +39,7 @@ void* task_detect(void *p)
         if (single_receive_packet(sensor_list[k].dev_id, STATUS_CODE))
         {
             uint8_t modo = readRegister(REG_FIFO);
-        
+
             if(modo == 0x04)
             {
                 printf("STATUS:%u:STANDBY\n", sensor_list[k].dev_id);
