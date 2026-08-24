@@ -111,21 +111,6 @@ void sigint_handler(int sig) {
     keep_running = 0;
 }
 
-void retardo_milisegundos(long milisegundos) {
-    struct timespec req, rem;
-
-    // Convertir milisegundos a segundos y nanosegundos
-    req.tv_sec = milisegundos / 1000;
-    req.tv_nsec = (milisegundos % 1000) * 1000000L;
-
-    // nanosleep devuelve -1 si es interrumpida por una señal
-    while (nanosleep(&req, &rem) == -1) {
-        // Si fue interrumpida, 'rem' contiene el tiempo restante.
-        // Actualizamos 'req' con ese tiempo y volvemos a dormir.
-        req = rem;
-    }
-}
-
 // Función que usa el Hilo COMUNICADOR (Productor)
 void queue_push(queue_item_t* item)
 {
@@ -550,6 +535,7 @@ void* task_process_data(void* p)
             else if(sensor_id == (active_dev_id | BME_ID))
             {
                 uint16_t bme_packet_num = (uint16_t)(msg.payload[2] << 8) | (uint16_t)msg.payload[1];
+                (void)bme_packet_num;
 
                 for(size_t i = 3 ; i < PAYLOAD_RX_LENGTH; i += 15)
                 {
