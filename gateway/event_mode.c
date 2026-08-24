@@ -246,7 +246,7 @@ void* task_communicator(void* p)
         {
             case STATE_POLLING:
             {
-                retardo_milisegundos(10000);
+                retardo_milisegundos(30000);
 
                 uint8_t data[PAYLOAD_TX_LENGTH] = {sensor_list[k].dev_id, STATUS_CODE, 0xFF, 0xFF, 0xFF};
                 send_packet(data, PAYLOAD_TX_LENGTH);
@@ -347,7 +347,7 @@ void* task_communicator(void* p)
                             }
                         }
                     }
-                    else if (haveData == 0)
+                    else if (haveData == 0xFF)
                     {
                         if (handle_time_sync_cycle(sensor_list[k].dev_id, true))
                         {
