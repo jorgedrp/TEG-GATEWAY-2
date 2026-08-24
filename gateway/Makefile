@@ -22,7 +22,7 @@ all: $(TARGETS)
 standby_mode: standby_mode.c lora.c spi.c
 	$(CC) $(CFLAGS) $^ -o $(BINDIR)/$@ -lgpiod -lpthread $(LDFLAGS)
 
-event_mode: event_mode.c lora.c spi.c curl.c
+event_mode: event_mode.c clock_sync.c lora.c spi.c curl.c
 	$(CC) $(CFLAGS) $^ -o $(BINDIR)/$@ -lgpiod -lcurl -lpthread -lm $(LDFLAGS)
 
 time_mode: time_mode.c lora.c spi.c curl.c
