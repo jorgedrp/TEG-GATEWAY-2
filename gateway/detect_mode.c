@@ -71,7 +71,7 @@ void* task_tx(void)
     return NULL;
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
     init_lora();
 
