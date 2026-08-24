@@ -17,8 +17,6 @@
 #include "clock.h"
 
 // --- Constantes del Programa ---
-#define PAYLOAD_RX_LENGTH   0xF3
-#define PAYLOAD_TX_LENGTH   0x05
 #define MPU_BATCH_SIZE      2000
 #define BME_BATCH_SIZE      16
 

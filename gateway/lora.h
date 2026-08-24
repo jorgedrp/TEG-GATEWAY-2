@@ -76,6 +76,9 @@
 #define PIN_NUM_CS 8
 #define PIN_DIO0 24
 
+#define PAYLOAD_RX_LENGTH   0xF3
+#define PAYLOAD_TX_LENGTH   0x05
+
 #define SENSOR_NUM      4
 #define MPU_ID          0x01
 #define BME_ID          0x02
