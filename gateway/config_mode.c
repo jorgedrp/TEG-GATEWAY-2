@@ -1,12 +1,15 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include <semaphore.h>
 #include <errno.h>
-#include "lora.c"
-#include "spi.c"
+#include "lora.h"
+#include "spi.h"
 
 #define PAYLOAD_TX_LENGTH   0x05
 #define CONFIG 0x08
 
-void task_tx(uint8_t sensor, uint8_t frecuency_rate, uint8_t lora_mode)
+void* task_tx(uint8_t sensor, uint8_t frecuency_rate, uint8_t lora_mode)
 {
     uint8_t data[PAYLOAD_TX_LENGTH] = {sensor, CONFIG, frecuency_rate, lora_mode, 0xFF};
 
@@ -36,13 +39,15 @@ void task_tx(uint8_t sensor, uint8_t frecuency_rate, uint8_t lora_mode)
             fflush(stdout);
         }
     }
+
+    return NULL;
 }
 
 int main(int argc, char *argv[])
 {
-    if (argc < 4)
+    if (argc < 2)
     {
-        fprintf(stderr, "Error: Faltan argumentos. Uso: %s <sensor> <frecuencia> <lora_mode>\n", argv[0]);
+        fprintf(stderr, "Error: Faltan argumentos.\n");
         return 1;
     }
 
@@ -51,6 +56,7 @@ int main(int argc, char *argv[])
     int lora_mode = atoi(argv[3]);
 
     init_lora();
+
     sem_init(&lora_irq, 0, 0);
 
     init_lora_interrupt();
@@ -58,5 +64,6 @@ int main(int argc, char *argv[])
     task_tx(sensor, frecuency_rate, lora_mode);
 
     sem_destroy(&lora_irq);
+
     return 0;
 }

@@ -34,8 +34,8 @@ config_mode: config_mode.c lora.c spi.c
 detect_mode: detect_mode.c lora.c spi.c
 	$(CC) $(CFLAGS) detect_mode.c -o $(BINDIR)/$@ -lgpiod -lpthread $(LDFLAGS)
 
-clock: clock.c lora.c spi.c
-	$(CC) $(CFLAGS) clock.c -o $(BINDIR)/$@ -lgpiod -lpthread -lm $(LDFLAGS)
+clock: clock.c clock_sync.c lora.c spi.c
+	$(CC) $(CFLAGS) clock.c clock_sync.c -o $(BINDIR)/$@ -lgpiod -lpthread -lm $(LDFLAGS)
 
 test_spi: test_spi.c lora.c spi.c
 	$(CC) $(CFLAGS) test_spi.c -o $(BINDIR)/$@ -lgpiod -lpthread $(LDFLAGS)

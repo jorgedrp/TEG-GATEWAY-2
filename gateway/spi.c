@@ -40,25 +40,7 @@ int spi_transaction(uint8_t *tx_data, uint8_t *rx_data, size_t len) {
         return 1;
     }
 
-    // Mostrar resultados
-//    printf("TX: ");
-//    for (int i = 0; i < sizeof(tx_data); i++) {
-//        printf("0x%02X ", tx_data[i]);
-//    }
-//    printf("\nRX: ");
-//    for (int i = 0; i < sizeof(rx_data); i++) {
-//        printf("0x%02X ", rx_data[i]);
-//    }
-//    printf("\n");
-
+    // Cerrar dispositivo
     close(fd);
     return 0;
 }
-
-//void main(void)
-//{
-//    uint8_t dataOut[8] = {0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11};
-//    uint8_t dataIn[8];
-//
-//    spi_transaction(dataOut, dataIn);
-//}

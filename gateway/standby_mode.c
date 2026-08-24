@@ -1,19 +1,23 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include <semaphore.h>
 #include <pthread.h>
 #include <errno.h>
-#include <signal.h>
-#include "lora.c"
-#include "spi.c"
+#include <unistd.h>
+#include <signal.h> // Para el manejo de señales (Ctrl+C)
+#include "lora.h"
+#include "spi.h"
 
 #define PAYLOAD_TX_LENGTH   0x05
 #define MODO_STANDBY        0x04
 
 pthread_t detect_thread;
+
 volatile sig_atomic_t keep_running = 1;
 size_t num_sensores = 1;
 
 void sigint_handler(int sig) {
-    (void)sig;
     printf("\nSeñal de interrupción (Ctrl+C) recibida. Iniciando cierre limpio...\n");
     fflush(stdout);
     keep_running = 0;
@@ -85,7 +89,7 @@ void task_tx(sensor_data_t *sensor_list, size_t num_sensores)
             }
             else
             {
-                printf("No hubo respuesta del sensor %u. Reintentando... %i\n", sensor_list[0].dev_id, intentos + 1);
+                printf("No se cambio de modo. Reintentando... %i\n", intentos + 1);
                 fflush(stdout);
             }
         }
@@ -99,6 +103,8 @@ void task_tx(sensor_data_t *sensor_list, size_t num_sensores)
         if(intentos == 5)
         {
             printf("No se pudo establecer comunicación con el sensor %u.\n", sensor_list[0].dev_id);
+            fflush(stdout);
+            printf("STATUS:%u:OFF\n", sensor_list[0].dev_id);
             fflush(stdout);
         }
     }
@@ -114,18 +120,17 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    sensor_data_t sensor;
-    sensor.dev_id = atoi(argv[1]);
-
     sensor_data_t sensor_list[SENSOR_NUM];
+    sensor_data_t sensor;
 
-    signal(SIGINT, sigint_handler);
+    sensor.dev_id = atoi(argv[1]);
 
     if(sensor.dev_id == 0xFF)
     {
         for(size_t i = 0; i < SENSOR_NUM; i++)
         {
             sensor.dev_id = atoi(argv[i + 2]);
+
             sensor_list[i] = sensor;
         }
         num_sensores = SENSOR_NUM;
@@ -135,6 +140,8 @@ int main(int argc, char *argv[])
         sensor_list[0] = sensor;
         num_sensores = 1;
     }
+
+    signal(SIGINT, sigint_handler);
 
     init_lora();
     sem_init(&lora_irq, 0, 0);
