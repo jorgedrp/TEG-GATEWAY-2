@@ -13,12 +13,12 @@
 #define MODO_STANDBY        0x04
 
 pthread_t detect_thread;
-sem_t lora_irq;
 
 volatile sig_atomic_t keep_running = 1;
 size_t num_sensores = 1;
 
 void sigint_handler(int sig) {
+    (void)sig;
     printf("\nSeñal de interrupción (Ctrl+C) recibida. Iniciando cierre limpio...\n");
     fflush(stdout);
     keep_running = 0;
