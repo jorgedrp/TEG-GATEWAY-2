@@ -246,7 +246,7 @@ void* task_communicator(void* p)
         {
             case STATE_POLLING:
             {
-                retardo_milisegundos(30000);
+                retardo_milisegundos((long)(120000 / num_sensores));
 
                 uint8_t data[PAYLOAD_TX_LENGTH] = {sensor_list[k].dev_id, STATUS_CODE, 0xFF, 0xFF, 0xFF};
                 send_packet(data, PAYLOAD_TX_LENGTH);
