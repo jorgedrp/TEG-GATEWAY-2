@@ -10,6 +10,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <signal.h>
+#include <curl/curl.h>
 #include "lora.h"
 #include "spi.h"
 #include "curl.h"
@@ -104,6 +105,7 @@ sem_t bme_queue_space_available;   // Semáforo de espacios vacíos para escribi
 pthread_mutex_t write_influx_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void sigint_handler(int sig) {
+    (void)sig;
     printf("\nSeñal de interrupción (Ctrl+C) recibida. Iniciando cierre limpio...\n");
     fflush(stdout);
     keep_running = 0;
@@ -335,7 +337,7 @@ void* task_communicator(void* p)
 
                                 printf("Solicitud de transmisión de datos del sensor %u recibida.\n", active_dev_id);
                                 fflush(stdout);
-                                printf("DATA:%u:%llu:%llu\n", active_dev_id, (uint64_t)(timestamp / 1000) - sensor_list[k].time * 200, (uint64_t)(timestamp / 1000) + sensor_list[k].time * 1000);
+                                printf("DATA:%u:%llu:%llu\n", active_dev_id, (unsigned long long)((timestamp / 1000) - sensor_list[k].time * 200), (unsigned long long)((timestamp / 1000) + sensor_list[k].time * 1000));
                                 fflush(stdout);
 
                                 // Respondemos confirmando que empezamos
@@ -562,6 +564,7 @@ void* task_process_data(void* p)
             else if(sensor_id == (active_dev_id | BME_ID))
             {
                 uint16_t bme_packet_num = (uint16_t)(msg.payload[2] << 8) | (uint16_t)msg.payload[1];
+                (void)bme_packet_num;
 
                 for(size_t i = 3 ; i < PAYLOAD_RX_LENGTH; i += 15)
                 {
@@ -605,7 +608,7 @@ void* task_process_data(void* p)
                     }
                 }
 
-                printf("Total de paquetes perdidos: %lu\n", total_lost);
+                printf("Total de paquetes perdidos: %zu\n", total_lost);
                 fflush(stdout);
 
                 // Buscar el primer paquete perdido
@@ -613,7 +616,7 @@ void* task_process_data(void* p)
                 {
                     if(received_mpu[k] == 0)
                     {
-                        printf("Paquete número %lu perdido. Solicitándolo nuevamente...\n", k);
+                        printf("Paquete número %u perdido. Solicitándolo nuevamente...\n", (unsigned int)k);
                         fflush(stdout);
 
                         // Escribir comando NACK para el Hilo Comunicador
@@ -667,6 +670,7 @@ void* task_process_data(void* p)
 
 void* task_send_mpu_to_influx(void* p)
 {
+    (void)p;
     mpu6050_data_t data_buffer[MPU_BATCH_SIZE];
     int mpu_data_count = 0;
 
@@ -744,6 +748,7 @@ void* task_send_mpu_to_influx(void* p)
 
 void* task_send_bme_to_influx(void* p)
 {
+    (void)p;
     bme280_data_t data_buffer[BME_BATCH_SIZE];
     int bme_data_count = 0;
 

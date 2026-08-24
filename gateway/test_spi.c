@@ -5,8 +5,8 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
-#include "lora.c"
-#include "spi.c"
+#include "lora.h"
+#include "spi.h"
 
 int main(int argc, char *argv[])
 {
