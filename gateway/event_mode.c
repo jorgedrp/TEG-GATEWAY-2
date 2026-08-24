@@ -70,7 +70,7 @@ pthread_mutex_t radio_mutex = PTHREAD_MUTEX_INITIALIZER;
 radio_cmd_t pending_cmd = CMD_NONE;
 uint8_t nack_packet_l = 0;
 uint8_t nack_packet_h = 0;
-bool sync_requested = false; 
+bool sync_requested = false;
 
 // 2. Semáforos para el hardware
 //sem_t lora_irq; // Semáforo de hardware
@@ -120,7 +120,7 @@ void queue_push(queue_item_t* item)
 
     // 3. Copiar el elemento en la posición actual de la cabeza (head)
     rx_queue[rx_queue_head] = *item;
-    
+
     // 4. Avanzar la cabeza de forma circular
     rx_queue_head = (rx_queue_head + 1) % RX_QUEUE_SIZE;
 
@@ -142,7 +142,7 @@ void queue_pop(queue_item_t* item)
 
     // 3. Copiar el elemento desde la posición actual de la cola (tail)
     *item = rx_queue[rx_queue_tail];
-    
+
     // 4. Avanzar la cola de forma circular
     rx_queue_tail = (rx_queue_tail + 1) % RX_QUEUE_SIZE;
 
@@ -158,11 +158,11 @@ void* task_communicator(void* p)
     sensor_data_t* sensor_list = (sensor_data_t*)p;
     size_t k = 0;
     size_t retrys = 0;
-    
+
     // Iniciar en estado de búsqueda
-    radio_state_t current_state = STATE_POLLING; 
-    uint8_t active_dev_id = 0; 
-    
+    radio_state_t current_state = STATE_POLLING;
+    uint8_t active_dev_id = 0;
+
     while (keep_running)
     {
         // 1. REVISAR COMANDOS PENDIENTES DEL PROCESADOR O SINCRONIZADOR
@@ -171,7 +171,7 @@ void* task_communicator(void* p)
         uint8_t local_nack_l = nack_packet_l;
         uint8_t local_nack_h = nack_packet_h;
         bool local_sync_req = sync_requested;
-        
+
         // Si procesamos el comando, lo limpiamos
         if (pending_cmd != CMD_NONE) pending_cmd = CMD_NONE;
         pthread_mutex_unlock(&radio_mutex);
@@ -215,8 +215,8 @@ void* task_communicator(void* p)
             writeRegister(REG_PAYLOAD_LENGTH, PAYLOAD_RX_LENGTH);
             writeRegister(REG_DIO_MAPPING_1, 0x00); // DIO0 = RxDone
             writeRegister(REG_OP_MODE, 0x8D); // Modo RX continuo
-            
-            current_state = STATE_POLLING; 
+
+            current_state = STATE_POLLING;
             k = (k + 1) % num_sensores;
         }
         else if(retrys == 10)
@@ -230,8 +230,8 @@ void* task_communicator(void* p)
             writeRegister(REG_PAYLOAD_LENGTH, PAYLOAD_RX_LENGTH);
             writeRegister(REG_DIO_MAPPING_1, 0x00); // DIO0 = RxDone
             writeRegister(REG_OP_MODE, 0x8D); // Modo RX continuo
-            
-            current_state = STATE_POLLING; 
+
+            current_state = STATE_POLLING;
             k = (k + 1) % num_sensores;
         }
 
@@ -246,16 +246,16 @@ void* task_communicator(void* p)
         {
             case STATE_POLLING:
             {
-                retardo_milisegundos(10000);
-                
+                retardo_milisegundos(30000);
+
                 uint8_t data[PAYLOAD_TX_LENGTH] = {sensor_list[k].dev_id, STATUS_CODE, 0xFF, 0xFF, 0xFF};
                 send_packet(data, PAYLOAD_TX_LENGTH);
 
                 if (single_receive_packet(sensor_list[k].dev_id, STATUS_CODE))
                 {
                     uint8_t modo = readRegister(REG_FIFO);
-                    uint8_t haveData = readRegister(REG_FIFO); 
-                
+                    uint8_t haveData = readRegister(REG_FIFO);
+
                     switch(modo)
                     {
                     case 0x01:
@@ -280,7 +280,7 @@ void* task_communicator(void* p)
                         // Configurar LoRa para RX continuo
                         writeRegister(REG_FIFO_ADDR_PTR, 0x00);
                         writeRegister(REG_PAYLOAD_LENGTH, 0x0A);
-                        writeRegister(REG_DIO_MAPPING_1, 0x00); 
+                        writeRegister(REG_DIO_MAPPING_1, 0x00);
                         writeRegister(REG_OP_MODE, 0x8D); // Modo RX continuo
 
                         struct timespec ts;
@@ -289,7 +289,7 @@ void* task_communicator(void* p)
 
                         if (sem_timedwait(&lora_irq, &ts) == -1)
                         {
-                            if (errno == ETIMEDOUT) continue; 
+                            if (errno == ETIMEDOUT) continue;
                         }
 
                         uint8_t irq_flags = readRegister(REG_IRQ_FLAGS);
@@ -309,13 +309,13 @@ void* task_communicator(void* p)
                             // ¿Es el paquete inicial con el Timestamp?
                             if (sensor_list[k].dev_id == active_dev_id && reg_data[1] == DATA_AVAILABLE)
                             {
-                                uint64_t timestamp = (uint64_t)((uint64_t)reg_data[2] << 56 | 
-                                                              (uint64_t)reg_data[3] << 48 | 
-                                                              (uint64_t)reg_data[4] << 40 | 
-                                                              (uint64_t)reg_data[5] << 32 | 
-                                                              (uint64_t)reg_data[6] << 24 | 
-                                                              (uint64_t)reg_data[7] << 16 | 
-                                                              (uint64_t)reg_data[8] << 8 | 
+                                uint64_t timestamp = (uint64_t)((uint64_t)reg_data[2] << 56 |
+                                                              (uint64_t)reg_data[3] << 48 |
+                                                              (uint64_t)reg_data[4] << 40 |
+                                                              (uint64_t)reg_data[5] << 32 |
+                                                              (uint64_t)reg_data[6] << 24 |
+                                                              (uint64_t)reg_data[7] << 16 |
+                                                              (uint64_t)reg_data[8] << 8 |
                                                               (uint64_t)reg_data[9]);
 
                                 printf("Solicitud de transmisión de datos del sensor %u recibida.\n", active_dev_id);
@@ -341,9 +341,9 @@ void* task_communicator(void* p)
                                 writeRegister(REG_PAYLOAD_LENGTH, PAYLOAD_RX_LENGTH);
                                 writeRegister(REG_DIO_MAPPING_1, 0x00); // DIO0 = RxDone
                                 writeRegister(REG_OP_MODE, 0x8D); // Modo RX continuo
-                        
+
                                 retrys = 0;
-                                current_state = STATE_RX_CONTINUOUS; 
+                                current_state = STATE_RX_CONTINUOUS;
                             }
                         }
                     }
@@ -377,19 +377,19 @@ void* task_communicator(void* p)
                 {
                     ts.tv_sec += 10;
                 }
-                
+
                 if (sem_timedwait(&lora_irq, &ts) == -1)
                 {
                     retrys++;
                     // Si hubo timeout, el loop vuelve al inicio y revisará si hay "NACKs" pendientes
-                    if (errno == ETIMEDOUT) continue; 
+                    if (errno == ETIMEDOUT) continue;
                 }
 
                 retrys = 0;
 
                 uint8_t irq_flags = readRegister(REG_IRQ_FLAGS);
                 writeRegister(REG_IRQ_FLAGS, 0xFF); // Limpiar banderas
-                
+
                 if (irq_flags & IRQ_PAYLOAD_CRC_ERROR_MASK)
                 {
                     crc_count++;
@@ -397,14 +397,14 @@ void* task_communicator(void* p)
                 else if (irq_flags & IRQ_RX_DONE_MASK)
                 {
                     writeRegister(REG_FIFO_ADDR_PTR, readRegister(REG_FIFO_RX_CURRENT_ADDR));
-                    
+
                     // ES UN PAQUETE DE DATOS NORMAL
                     queue_item_t data_msg;
                     data_msg.type = MSG_DATA;
                     for (int i = 0; i < PAYLOAD_RX_LENGTH; i++) {
                         data_msg.payload[i] = readRegister(REG_FIFO);
                     }
-                        
+
                     // === ENVIAR DATOS CRUDOS AL PROCESADOR ===
                     queue_push(&data_msg); // Esta función debe hacer sem_post(&items_in_rx_queue)
                     // =========================================
@@ -427,24 +427,24 @@ void* task_process_data(void* p)
 {
     // Recibimos la lista de sensores al crear el hilo (una sola vez)
     sensor_data_t* sensor_list = (sensor_data_t*)p;
-    
+
     // Variables de contexto para la sesión actual
     bool session_active = false;
     uint8_t active_dev_id = 0;
     int active_rate = 0;
     uint64_t start_time = 0;
     uint16_t cant_paq_mpu = 0;
-    char* received_mpu = NULL; 
-    
+    char* received_mpu = NULL;
+
     int packet_count = 0;
 
     while (keep_running)
     {
         queue_item_t msg;
-        
+
         // Función ficticia: extrae el siguiente mensaje de la Cola Rx (Ring Buffer)
         // Internamente debe hacer sem_wait(&sem_items_cola_rx) y usar el mutex_cola_rx
-        queue_pop(&msg); 
+        queue_pop(&msg);
 
         if (!keep_running) break;
 
@@ -453,7 +453,7 @@ void* task_process_data(void* p)
         {
             active_dev_id = msg.dev_id;
             start_time = (uint64_t)(msg.timestamp / 1000);
-            
+
             // Buscar los parámetros del sensor en la lista
             int time_s = 0;
             for (size_t i = 0; i < num_sensores; i++) {
@@ -465,16 +465,16 @@ void* task_process_data(void* p)
             }
 
             cant_paq_mpu = (uint16_t)(((time_s + (time_s * 0.2)) * 1000) / (active_rate * 16));
-            
+
             // Limpiar memoria de la sesión anterior si quedó colgada por algún error
             if (received_mpu != NULL) free(received_mpu);
-            
+
             // Reservar memoria para el mapa de paquetes de esta sesión
             received_mpu = (char*)calloc(cant_paq_mpu, sizeof(char));
-            
+
             session_active = true;
             packet_count = 0;
-            
+
             time_t segundos = (time_t)(msg.timestamp / 1000000L);
             struct tm *tm_local = localtime(&segundos);
             char buffer_fecha_hora[100];
@@ -482,7 +482,7 @@ void* task_process_data(void* p)
             printf("Recepción iniciada con sensor %u. Fecha de evento: %s\n", active_dev_id, buffer_fecha_hora);
             fflush(stdout);
         }
-        
+
         // --- PROCESAMIENTO DE DATOS ---
         else if (msg.type == MSG_DATA && session_active)
         {
@@ -613,10 +613,10 @@ void* task_process_data(void* p)
                     // Limpiar contexto
                     free(received_mpu);
                     received_mpu = NULL;
-                    session_active = false; 
+                    session_active = false;
                 }
             }
-            
+
             // 3. PAQUETE CORRUPTO O DE OTRO SENSOR
             else
             {
@@ -631,7 +631,7 @@ void* task_process_data(void* p)
             session_active = false;
         }
     }
-    
+
     if (received_mpu != NULL) free(received_mpu);
     return NULL;
 }
@@ -654,7 +654,7 @@ void* task_send_mpu_to_influx(void* p)
             if (errno == ETIMEDOUT)
             {
                 // Si pasó 1 segundo y tenemos datos colgados, los enviamos
-                if (mpu_data_count > 0) 
+                if (mpu_data_count > 0)
                 {
                     //printf("Timeout. Enviando lote parcial de %d puntos...\n", mpu_data_count);
                     //fflush(stdout);
@@ -668,7 +668,7 @@ void* task_send_mpu_to_influx(void* p)
             else if (errno == EINTR)
             {
                 // Interrupción por señal del Sistema Operativo, volvemos a intentar
-                continue; 
+                continue;
             }
             else
             {
@@ -676,7 +676,7 @@ void* task_send_mpu_to_influx(void* p)
                 continue;
             }
         }
-        
+
         // Verificación de seguridad por si keep_running cambia durante la espera
         if (!keep_running) break;
 
@@ -685,10 +685,10 @@ void* task_send_mpu_to_influx(void* p)
         data_buffer[mpu_data_count] = mpu_processed_data_queue[mpu_queue_out];
         mpu_queue_out = (mpu_queue_out + 1) % MPU_PROCESSED_QUEUE_SIZE;
         pthread_mutex_unlock(&mpu_queue_mutex);
-        
+
         // 3. Señalizar al Hilo Procesador que se liberó un espacio en el arreglo
         sem_post(&mpu_queue_space_available);
-        
+
         mpu_data_count++;
 
         // 4. Si alcanzamos el límite del lote, enviamos a InfluxDB
@@ -732,7 +732,7 @@ void* task_send_bme_to_influx(void* p)
             if (errno == ETIMEDOUT)
             {
                 // Si pasó 1 segundo y tenemos datos colgados, los enviamos
-                if (bme_data_count > 0) 
+                if (bme_data_count > 0)
                 {
                     printf("Timeout. Enviando lote parcial de %d puntos...\n", bme_data_count);
                     fflush(stdout);
@@ -746,7 +746,7 @@ void* task_send_bme_to_influx(void* p)
             else if (errno == EINTR)
             {
                 // Interrupción por señal del Sistema Operativo, volvemos a intentar
-                continue; 
+                continue;
             }
             else
             {
@@ -754,7 +754,7 @@ void* task_send_bme_to_influx(void* p)
                 continue;
             }
         }
-        
+
         // Verificación de seguridad por si keep_running cambia durante la espera
         if (!keep_running) break;
 
@@ -763,10 +763,10 @@ void* task_send_bme_to_influx(void* p)
         data_buffer[bme_data_count] = bme_processed_data_queue[bme_queue_out];
         bme_queue_out = (bme_queue_out + 1) % BME_PROCESSED_QUEUE_SIZE;
         pthread_mutex_unlock(&bme_queue_mutex);
-        
+
         // 3. Señalizar al Hilo Procesador que se liberó un espacio en el arreglo
         sem_post(&bme_queue_space_available);
-        
+
         bme_data_count++;
 
         // 4. Si alcanzamos el límite del lote, enviamos a InfluxDB
@@ -847,7 +847,7 @@ int main(int argc, char *argv[])
 
     sensor_data_t sensor_list[SENSOR_NUM];
     sensor_data_t sensor;
-    
+
     sensor.dev_id = atoi(argv[1]);
 
     if(sensor.dev_id == 0xFF)
@@ -870,24 +870,24 @@ int main(int argc, char *argv[])
         sensor.lora_mode = atoi(argv[3]);
         sensor.rate = atoi(argv[4]);
         sensor.time = atoi(argv[5]);
-        
+
         sensor_list[0] = sensor;
         num_sensores = 1;
     }
 
     printf("Iniciando modo evento...\n");
     fflush(stdout);
-    
+
     if (curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
         fprintf(stderr, "Error fatal: No se pudo inicializar libcurl.\n");
         fflush(stdout);
         return 1;
     }
-    
+
     init_lora();
-    
+
     // --- 1. Inicialización de IPC (Mutex y Semáforos) ---
-    
+
     // Mutex de control y colas
     pthread_mutex_init(&radio_mutex, NULL);
     pthread_mutex_init(&rx_queue_mutex, NULL);
@@ -944,7 +944,7 @@ int main(int argc, char *argv[])
     pthread_join(proc_thread, NULL);
     pthread_join(mpu_sender_thread, NULL);
     pthread_join(bme_sender_thread, NULL);
-    
+
     printf("Todos los hilos han finalizado.\n");
     fflush(stdout);
 
@@ -962,7 +962,7 @@ int main(int argc, char *argv[])
     sem_destroy(&mpu_queue_space_available);
     sem_destroy(&bme_queue_count);
     sem_destroy(&bme_queue_space_available);
-    
+
     curl_global_cleanup();
 
     return 0;
