@@ -349,10 +349,23 @@ void* task_communicator(void* p)
                     }
                     else if (haveData == 0xFF)
                     {
-                        if (handle_time_sync_cycle(sensor_list[k].dev_id, true))
+                        uint8_t data[PAYLOAD_TX_LENGTH] = {sensor_list[k].dev_id, CLOCK_SYNC, 0x04, 0xFF, 0xFF};
+                        send_packet(data, PAYLOAD_TX_LENGTH);
+
+                        if(single_receive_packet(data[0], ACKNOWLEDGEMENT))
                         {
-                            printf("Sincronización de tiempo completada con el sensor %u.\n", sensor_list[k].dev_id);
-                            fflush(stdout);
+                            if (handle_time_sync_cycle(sensor_list[k].dev_id))
+                            {
+                                printf("Sincronización de tiempo completada con el sensor %u.\n", sensor_list[k].dev_id);
+                                fflush(stdout);
+                            }
+                            else
+                            {
+                                printf("Timeout en sincronización de tiempo con el sensor %u.\n", sensor_list[k].dev_id);
+                                fflush(stdout);
+                            }
+
+                            k = (k + 1) % num_sensores;
                         }
                         else
                         {

@@ -49,6 +49,6 @@ static inline void encode_u64_be(uint8_t *dest, uint64_t value)
     dest[7] = (value >> 0) & 0xFF;
 }
 
-int handle_time_sync_cycle(uint8_t sensor, bool is_event_mode);
+int handle_time_sync_cycle(uint8_t sensor);
 
 #endif // CLOCK_H

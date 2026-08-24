@@ -4,27 +4,9 @@
 #include <stdio.h>
 #include <errno.h>
 
-int handle_time_sync_cycle(uint8_t sensor, bool is_event_mode)
+int handle_time_sync_cycle(uint8_t sensor)
 {
-    uint8_t data[PAYLOAD_TX_LENGTH];
-
-    if (is_event_mode)
-    {
-        data[0] = sensor;
-        data[1] = CLOCK_SYNC;
-        data[2] = 0x04;
-        data[3] = 0xFF;
-        data[4] = 0xFF;
-    }
-    else
-    {
-        data[0] = sensor;
-        data[1] = CMD_TIME_SYNC_RESPONSE;
-        data[2] = 0xFF;
-        data[3] = 0xFF;
-        data[4] = 0xFF;
-    }
-
+    uint8_t data[PAYLOAD_TX_LENGTH] = {sensor, CMD_TIME_SYNC_RESPONSE, 0xFF, 0xFF, 0xFF};
     send_packet(data, sizeof(data)/sizeof(data[0]));
 
     writeRegister(REG_PAYLOAD_LENGTH, 0x02);
@@ -33,7 +15,7 @@ int handle_time_sync_cycle(uint8_t sensor, bool is_event_mode)
     writeRegister(REG_OP_MODE, 0x8D);
 
     struct timespec ts;
-    
+
     clock_gettime(CLOCK_REALTIME, &ts);
     ts.tv_sec += 2;
 
@@ -77,7 +59,7 @@ int handle_time_sync_cycle(uint8_t sensor, bool is_event_mode)
             }
 
             writeRegister(REG_OP_MODE, 0x8B);
-            
+
             struct timespec ts;
             clock_gettime(CLOCK_REALTIME, &ts);
             ts.tv_sec += 1;
@@ -86,7 +68,7 @@ int handle_time_sync_cycle(uint8_t sensor, bool is_event_mode)
             {
                 return 0; // Timeout
             }
-            
+
             writeRegister(REG_IRQ_FLAGS, IRQ_TX_DONE_MASK);
 
             return 1;

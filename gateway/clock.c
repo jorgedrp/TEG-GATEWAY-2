@@ -75,7 +75,7 @@ void adjust_clock(void)
     {
         for (size_t k = 0; k < SIMPLE_ADJUST_ATTEMPTS ; k++)
         {
-            if (handle_time_sync_cycle(sensor_list[i].dev_id, false) == 0)
+            if (handle_time_sync_cycle(sensor_list[i].dev_id) == 0)
             {
                 printf("Timeout. Sensor: %u | Ciclo: %zu. Reintentando...\n", sensor_list[i].dev_id, k + 1);
                 fflush(stdout);
@@ -92,7 +92,7 @@ void adjust_skew(void)
 
     for (size_t i = 0; i < COMPLETE_ADJUST_ATTEMPTS * num_sensores; i++)
     {
-        if (handle_time_sync_cycle(sensor_list[k].dev_id, false) == 0)
+        if (handle_time_sync_cycle(sensor_list[k].dev_id) == 0)
         {
             printf("Timeout. Sensor: %u | Ciclo: %zu. Reintentando...\n", sensor_list[k].dev_id, i + 1);
             fflush(stdout);
@@ -116,7 +116,7 @@ void test_mode(void)
     {
         for (size_t k = 0; k < TEST_MODE_ATTEMPTS ; k++)
         {
-            if (handle_time_sync_cycle(sensor_list[i].dev_id, false) == 0)
+            if (handle_time_sync_cycle(sensor_list[i].dev_id) == 0)
             {
                 printf("Timeout. Sensor: %u | Ciclo: %zu. Reintentando...\n", sensor_list[i].dev_id, k + 1);
                 fflush(stdout);
