@@ -9,7 +9,7 @@ int handle_time_sync_cycle(uint8_t sensor)
     uint8_t data[PAYLOAD_TX_LENGTH] = {sensor, CMD_TIME_SYNC_RESPONSE, 0xFF, 0xFF, 0xFF};
     send_packet(data, sizeof(data)/sizeof(data[0]));
 
-    writeRegister(REG_PAYLOAD_LENGTH, 0x02);
+    writeRegister(REG_PAYLOAD_LENGTH, 0x12);
     writeRegister(REG_DIO_MAPPING_1, 0x00); // DIO0 = RxDone
     writeRegister(REG_FIFO_ADDR_PTR, 0x00);
     writeRegister(REG_OP_MODE, 0x8D);
