@@ -188,7 +188,7 @@ class ProcessManager:
                 )
                 monitor_thread.start()
 
-                sse_broadcaster.broadcast(f"[ORCHESTRATOR] {msg}")
+#                sse_broadcaster.broadcast(f"[ORCHESTRATOR] {msg}")
                 return True, msg
 
             except Exception as e:
@@ -210,7 +210,7 @@ class ProcessManager:
                         sensor_id = parts[1].strip()
                         mode = parts[2].strip().upper()
                         NodeRepository.update_mode(sensor_id, mode)
-                        sse_broadcaster.broadcast(f"[STATUS] Sensor {sensor_id} -> {mode}")
+#                        sse_broadcaster.broadcast(f"[STATUS] Sensor {sensor_id} -> {mode}")
 
                 # 2. Evento de registro de medición finalizada
                 elif line.startswith("DATA:"):
@@ -235,7 +235,7 @@ class ProcessManager:
             process.stdout.close()
             process.wait()
             logger.info(f"Subproceso '{cmd_name}' finalizó con código {process.returncode}")
-            sse_broadcaster.broadcast(f"[ORCHESTRATOR] Proceso '{cmd_name}' terminado (código {process.returncode})")
+#            sse_broadcaster.broadcast(f"[ORCHESTRATOR] Proceso '{cmd_name}' terminado (código {process.returncode})")
             sse_broadcaster.broadcast_end()
 
 # Singleton global del gestor de procesos
