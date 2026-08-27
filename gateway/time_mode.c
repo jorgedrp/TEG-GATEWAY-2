@@ -280,6 +280,7 @@ void* task_communicator(void* p)
                         }
 
                         num_sensores--;
+                        k = (k + 1) % num_sensores;
                     }
                     else
                     {
@@ -374,9 +375,8 @@ void* task_communicator(void* p)
                     }
 
                     num_sensores--;
+                    k = (k + 1) % num_sensores;
                 }
-
-                k = (k + 1) % num_sensores;
                 break;
             }
 
