@@ -235,7 +235,7 @@ void* task_communicator(void* p)
                 continue;
             }
 
-            k = (k + 1) % num_sensores;
+            k = k % num_sensores;
         }
         else if(transmision_retrys == 10)
         {
@@ -269,7 +269,8 @@ void* task_communicator(void* p)
                 continue;
             }
 
-            k = (k + 1) % num_sensores;
+            k = k % num_sensores;
+            transmision_retrys = 0;
         }
 
         if (local_sync_req && current_state == STATE_POLLING)
@@ -320,7 +321,7 @@ void* task_communicator(void* p)
                         }
 
                         communication_retrys = 0;
-                        k = (k + 1) % num_sensores;
+                        k = k % num_sensores;
                     }
                     else
                     {
@@ -423,7 +424,7 @@ void* task_communicator(void* p)
                         }
 
                         communication_retrys = 0;
-                        k = (k + 1) % num_sensores;
+                        k = k % num_sensores;
                     }
 
                     retardo_milisegundos(1000);
