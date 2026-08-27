@@ -270,8 +270,6 @@ void* task_communicator(void* p)
                         {
                             sensor_list[i] = sensor_list[i + 1];
                         }
-                        num_sensores--;
-                        k = (k + 1) % num_sensores;
 
                         first_packet_count++;
 
@@ -279,10 +277,10 @@ void* task_communicator(void* p)
                         {
                             keep_running = 0;
                         }
-                        continue;
-                    }
 
-                    if (haveData == DATA_AVAILABLE)
+                        num_sensores--;
+                    }
+                    else
                     {
                         data[1] = DATA_PULL;
                         send_packet(data, PAYLOAD_TX_LENGTH);
@@ -367,8 +365,6 @@ void* task_communicator(void* p)
                     {
                         sensor_list[i] = sensor_list[i + 1];
                     }
-                    num_sensores--;
-                    k = (k + 1) % num_sensores;
 
                     first_packet_count++;
 
@@ -376,7 +372,9 @@ void* task_communicator(void* p)
                     {
                         keep_running = 0;
                     }
-                    continue;
+
+                    num_sensores--;
+                    k = (k + 1) % num_sensores;
                 }
                 break;
             }
