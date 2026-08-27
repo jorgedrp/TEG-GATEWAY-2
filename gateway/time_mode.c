@@ -363,7 +363,7 @@ void* task_communicator(void* p)
                 {
                     printf("STATUS:%u:OFF\n", sensor_list[k].dev_id);
                     fflush(stdout);
-                    for (size_t i = k; i < num_sensores - 1; i++)
+                    for (int i = k; i < num_sensores - 1; i++)
                     {
                         sensor_list[i] = sensor_list[i + 1];
                     }
