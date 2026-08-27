@@ -23,6 +23,7 @@
 
 #define MODO_TIEMPO 0x01
 #define MODO_EVENTO 0x02
+#define MODO_STANDBY 0x04
 #define DATA_PULL   0x20
 
 #define A_R 16384.0 // 32768/2
@@ -355,7 +356,6 @@ void* task_communicator(void* p)
                             }
                         }
                     }
-                    k = (k + 1) % num_sensores;
                 }
                 else
                 {
@@ -374,8 +374,9 @@ void* task_communicator(void* p)
                     }
 
                     num_sensores--;
-                    k = (k + 1) % num_sensores;
                 }
+
+                k = (k + 1) % num_sensores;
                 break;
             }
 
@@ -866,6 +867,21 @@ void task_tx(sensor_data_t *sensor_list, size_t num_sensores)
                     {
                         printf("STATUS:%u:TIEMPO\n", sensor_list[i].dev_id);
                         fflush(stdout);
+                    }
+                    else
+                    {
+                        printf("El sensor %u no cambió a modo tiempo.\n", sensor_list[i].dev_id);
+                        fflush(stdout);
+                        if(modo == MODO_EVENTO)
+                        {
+                            printf("STATUS:%u:EVENTO\n", sensor_list[i].dev_id);
+                            fflush(stdout);
+                        }
+                        else if(modo == MODO_STANDBY)
+                        {
+                            printf("STATUS:%u:STANDBY\n", sensor_list[i].dev_id);
+                            fflush(stdout);
+                        }
                     }
                 }
                 else
