@@ -64,7 +64,6 @@ typedef struct {
 volatile sig_atomic_t keep_running = 1;
 volatile uint8_t num_sensores = 0;
 volatile size_t crc_count = 0;
-volatile size_t first_packet_count = 0;
 
 // --- VARIABLES COMPARTIDAS (IPC) ---
 
@@ -220,6 +219,20 @@ void* task_communicator(void* p)
             writeRegister(REG_OP_MODE, 0x8D); // Modo RX continuo
 
             current_state = STATE_POLLING;
+
+            for (int i = k; i < num_sensores - 1; i++)
+            {
+                sensor_list[i] = sensor_list[i + 1];
+            }
+
+            num_sensores--;
+
+            if(num_sensores == 0)
+            {
+                keep_running = 0;
+                continue;
+            }
+
             k = (k + 1) % num_sensores;
         }
         else if(retrys == 10)
@@ -228,12 +241,6 @@ void* task_communicator(void* p)
             stop_msg.type = MSG_STOP_SESSION;
             queue_push(&stop_msg);
 
-            if(first_packet_count == num_sensores)
-            {
-                keep_running = 0;
-                break;
-            }
-
             config_lora(SIGNAL_CHANNEL);
             writeRegister(REG_FIFO_ADDR_PTR, 0x00);
             writeRegister(REG_PAYLOAD_LENGTH, PAYLOAD_RX_LENGTH);
@@ -241,6 +248,20 @@ void* task_communicator(void* p)
             writeRegister(REG_OP_MODE, 0x8D); // Modo RX continuo
 
             current_state = STATE_POLLING;
+
+            for (int i = k; i < num_sensores - 1; i++)
+            {
+                sensor_list[i] = sensor_list[i + 1];
+            }
+
+            num_sensores--;
+
+            if(num_sensores == 0)
+            {
+                keep_running = 0;
+                continue;
+            }
+
             k = (k + 1) % num_sensores;
         }
 
@@ -267,19 +288,20 @@ void* task_communicator(void* p)
                     {
                         printf("Se encontró el sensor %u pero no en modo tiempo y sin datos.\n", sensor_list[k].dev_id);
                         fflush(stdout);
+
                         for (int i = k; i < num_sensores - 1; i++)
                         {
                             sensor_list[i] = sensor_list[i + 1];
                         }
 
-                        first_packet_count++;
+                        num_sensores--;
 
-                        if (first_packet_count == num_sensores)
+                        if(num_sensores == 0)
                         {
                             keep_running = 0;
+                            continue;
                         }
 
-                        num_sensores--;
                         k = (k + 1) % num_sensores;
                     }
                     else
@@ -367,14 +389,14 @@ void* task_communicator(void* p)
                         sensor_list[i] = sensor_list[i + 1];
                     }
 
-                    first_packet_count++;
+                    num_sensores--;
 
-                    if (first_packet_count == num_sensores)
+                    if(num_sensores == 0)
                     {
                         keep_running = 0;
+                        continue;
                     }
 
-                    num_sensores--;
                     k = (k + 1) % num_sensores;
                 }
                 break;
@@ -456,7 +478,6 @@ void* task_process_data(void* p)
     char* received_mpu = NULL;
 
     int packet_count = 0;
-    int first_packet = 1;
 
     while (keep_running)
     {
@@ -493,7 +514,6 @@ void* task_process_data(void* p)
             received_mpu = (char*)calloc(cant_paq_mpu, sizeof(char));
 
             session_active = true;
-            first_packet = 1;
             packet_count = 0;
 
             time_t segundos = (time_t)(msg.timestamp / 1000000L);
@@ -521,12 +541,6 @@ void* task_process_data(void* p)
 
                     memcpy(&medicion_raw, &msg.payload[i], sizeof(mpu6050_dataraw_t));
                     medicion.dev_id = (active_dev_id | MPU_ID);
-
-                    if (first_packet)
-                    {
-                        first_packet = 0;
-                        first_packet_count++;
-                    }
 
                     int32_t delta_time = (int32_t)((uint32_t)medicion_raw.timestamp_h << 16 | (uint32_t)medicion_raw.timestamp_m << 8 | (uint32_t)medicion_raw.timestamp_l);
                     delta_time = delta_time << 8;
