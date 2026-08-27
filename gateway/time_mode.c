@@ -262,12 +262,27 @@ void* task_communicator(void* p)
                     uint8_t modo = readRegister(REG_FIFO);
                     uint8_t haveData = readRegister(REG_FIFO);
 
-                    if (modo != MODO_TIEMPO)
+                    if ((modo != MODO_TIEMPO) && (haveData != DATA_AVAILABLE))
                     {
-                        printf("Se encontró el sensor %u pero no en modo tiempo.\n", sensor_list[k].dev_id);
+                        printf("Se encontró el sensor %u pero no en modo tiempo y sin datos.\n", sensor_list[k].dev_id);
                         fflush(stdout);
+                        for (size_t i = k; i < num_sensores - 1; i++)
+                        {
+                            sensor_list[i] = sensor_list[i + 1];
+                        }
+                        num_sensores--;
+                        k = (k + 1) % num_sensores;
+
+                        first_packet_count++;
+
+                        if (first_packet_count == num_sensores)
+                        {
+                            keep_running = 0;
+                        }
+                        continue;
                     }
-                    else if (haveData == DATA_AVAILABLE)
+
+                    if (haveData == DATA_AVAILABLE)
                     {
                         data[1] = DATA_PULL;
                         send_packet(data, PAYLOAD_TX_LENGTH);
@@ -342,16 +357,26 @@ void* task_communicator(void* p)
                             }
                         }
                     }
-                    else
-                    {
-                        k = (k + 1) % num_sensores;
-                    }
+                    k = (k + 1) % num_sensores;
                 }
                 else
                 {
                     printf("STATUS:%u:OFF\n", sensor_list[k].dev_id);
                     fflush(stdout);
+                    for (size_t i = k; i < num_sensores - 1; i++)
+                    {
+                        sensor_list[i] = sensor_list[i + 1];
+                    }
+                    num_sensores--;
                     k = (k + 1) % num_sensores;
+
+                    first_packet_count++;
+
+                    if (first_packet_count == num_sensores)
+                    {
+                        keep_running = 0;
+                    }
+                    continue;
                 }
                 break;
             }

@@ -16,7 +16,7 @@ def execute_command(command_name):
 def stop_process():
     """Detiene cualquier proceso activo del orquestador."""
     stopped = process_manager.stop_active_process()
-    sse_broadcaster.broadcast("[ORCHESTRATOR] Proceso detenido por el usuario.")
+#    sse_broadcaster.broadcast("[ORCHESTRATOR] Proceso detenido por el usuario.")
     return jsonify({"success": stopped, "message": "Proceso detenido con éxito."})
 
 @orchestrator_bp.route('/status', methods=['GET'])
