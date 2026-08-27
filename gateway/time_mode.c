@@ -317,6 +317,7 @@ void* task_communicator(void* p)
                             continue;
                         }
 
+                        communication_retrys = 0;
                         k = (k + 1) % num_sensores;
                     }
                     else
@@ -389,6 +390,7 @@ void* task_communicator(void* p)
                                 writeRegister(REG_DIO_MAPPING_1, 0x00); // DIO0 = RxDone
                                 writeRegister(REG_OP_MODE, 0x8D); // Modo RX continuo
 
+                                communication_retrys = 0;
                                 transmision_retrys = 0;
                                 current_state = STATE_RX_CONTINUOUS;
                             }
@@ -398,6 +400,8 @@ void* task_communicator(void* p)
                 else
                 {
                     communication_retrys++;
+                    printf("No se pudo comunicar con el sensor %u. Reintentando... %zu\n", sensor_list[k].dev_id, communication_retrys);
+                    fflush(stdout);
 
                     if(communication_retrys > 4)
                     {
@@ -417,9 +421,10 @@ void* task_communicator(void* p)
                         }
 
                         communication_retrys = 0;
+                        k = (k + 1) % num_sensores;
                     }
 
-                    k = (k + 1) % num_sensores;
+                    retardo_milisegundos(1000);
                 }
                 break;
             }
