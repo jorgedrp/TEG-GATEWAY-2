@@ -204,7 +204,7 @@ void* task_communicator(void* p)
 
                 if(single_receive_packet(active_dev_id, ACKNOWLEDGEMENT))
                 {
-                    printf("STATUS:%u:STANDBY\n", sensor_list[k].dev_id);
+                    printf("STATUS:%u:STANDBY\n", active_dev_id);
                     fflush(stdout);
                     break;
                 }
@@ -239,7 +239,9 @@ void* task_communicator(void* p)
         }
         else if(transmision_retrys == 10)
         {
-            printf("STATUS:%u:OFF\n", sensor_list[k].dev_id);
+            printf("Tansmisión de datos del sensor %u interrumpida. No se completó la descarga.", active_dev_id);
+            fflush(stdout);
+            printf("STATUS:%u:OFF\n", active_dev_id);
             fflush(stdout);
 
             queue_item_t stop_msg;
