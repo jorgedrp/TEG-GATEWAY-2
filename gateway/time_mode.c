@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -159,7 +160,8 @@ void* task_communicator(void* p)
 {
     sensor_data_t* sensor_list = (sensor_data_t*)p;
     size_t k = 0;
-    size_t retrys = 0;
+    size_t transmision_retrys = 0;
+    size_t communication_retrys = 0;
 
     // Iniciar en estado de búsqueda
     radio_state_t current_state = STATE_POLLING;
@@ -235,8 +237,11 @@ void* task_communicator(void* p)
 
             k = (k + 1) % num_sensores;
         }
-        else if(retrys == 10)
+        else if(transmision_retrys == 10)
         {
+            printf("STATUS:%u:OFF\n", sensor_list[k].dev_id);
+            fflush(stdout);
+
             queue_item_t stop_msg;
             stop_msg.type = MSG_STOP_SESSION;
             queue_push(&stop_msg);
@@ -288,6 +293,16 @@ void* task_communicator(void* p)
                     {
                         printf("Se encontró el sensor %u pero no en modo tiempo y sin datos.\n", sensor_list[k].dev_id);
                         fflush(stdout);
+                        if(modo == MODO_EVENTO)
+                        {
+                            printf("STATUS:%u:EVENTO\n", sensor_list[i].dev_id);
+                            fflush(stdout);
+                        }
+                        else if(modo == MODO_STANDBY)
+                        {
+                            printf("STATUS:%u:STANDBY\n", sensor_list[i].dev_id);
+                            fflush(stdout);
+                        }
 
                         for (int i = k; i < num_sensores - 1; i++)
                         {
@@ -374,7 +389,7 @@ void* task_communicator(void* p)
                                 writeRegister(REG_DIO_MAPPING_1, 0x00); // DIO0 = RxDone
                                 writeRegister(REG_OP_MODE, 0x8D); // Modo RX continuo
 
-                                retrys = 0;
+                                transmision_retrys = 0;
                                 current_state = STATE_RX_CONTINUOUS;
                             }
                         }
@@ -382,19 +397,26 @@ void* task_communicator(void* p)
                 }
                 else
                 {
-                    printf("STATUS:%u:OFF\n", sensor_list[k].dev_id);
-                    fflush(stdout);
-                    for (int i = k; i < num_sensores - 1; i++)
-                    {
-                        sensor_list[i] = sensor_list[i + 1];
-                    }
+                    communication_retrys++;
 
-                    num_sensores--;
-
-                    if(num_sensores == 0)
+                    if(communication_retrys > 4)
                     {
-                        keep_running = 0;
-                        continue;
+                        printf("STATUS:%u:OFF\n", sensor_list[k].dev_id);
+                        fflush(stdout);
+                        for (int i = k; i < num_sensores - 1; i++)
+                        {
+                            sensor_list[i] = sensor_list[i + 1];
+                        }
+
+                        num_sensores--;
+
+                        if(num_sensores == 0)
+                        {
+                            keep_running = 0;
+                            continue;
+                        }
+
+                        communication_retrys = 0;
                     }
 
                     k = (k + 1) % num_sensores;
@@ -421,12 +443,12 @@ void* task_communicator(void* p)
 
                 if (sem_timedwait(&lora_irq, &ts) == -1)
                 {
-                    retrys++;
+                    transmision_retrys++;
                     // Si hubo timeout, el loop vuelve al inicio y revisará si hay "NACKs" pendientes
                     if (errno == ETIMEDOUT) continue;
                 }
 
-                retrys = 0;
+                transmision_retrys = 0;
 
                 uint8_t irq_flags = readRegister(REG_IRQ_FLAGS);
                 writeRegister(REG_IRQ_FLAGS, 0xFF); // Limpiar banderas
