@@ -295,12 +295,12 @@ void* task_communicator(void* p)
                         fflush(stdout);
                         if(modo == MODO_EVENTO)
                         {
-                            printf("STATUS:%u:EVENTO\n", sensor_list[i].dev_id);
+                            printf("STATUS:%u:EVENTO\n", sensor_list[k].dev_id);
                             fflush(stdout);
                         }
                         else if(modo == MODO_STANDBY)
                         {
-                            printf("STATUS:%u:STANDBY\n", sensor_list[i].dev_id);
+                            printf("STATUS:%u:STANDBY\n", sensor_list[k].dev_id);
                             fflush(stdout);
                         }
 
