@@ -239,7 +239,7 @@ void* task_communicator(void* p)
         }
         else if(transmision_retrys == 10)
         {
-            printf("Tansmisión de datos del sensor %u interrumpida. No se completó la descarga.", active_dev_id);
+            printf("Tansmisión de datos del sensor %u interrumpida. No se completó la descarga.\n", active_dev_id);
             fflush(stdout);
             printf("STATUS:%u:OFF\n", active_dev_id);
             fflush(stdout);
