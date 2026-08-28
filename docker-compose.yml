@@ -1,0 +1,57 @@
+services:
+  teg-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: teg-gateway
+    restart: unless-stopped
+    privileged: true # Requerido para acceso directo a hardware SPI (/dev/spidev*) y GPIO (/dev/gpiochip*)
+    devices:
+      - /dev/spidev0.0:/dev/spidev0.0
+    volumes:
+      - /dev:/dev # Mapeo de dispositivos GPIO para libgpiod v1/v2
+      - ./data:/app/webapp # Persistencia de la base de datos SQLite (gateway.db)
+    env_file:
+      - .env
+    environment:
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5000
+      - INFLUXDB_URL=http://influxdb:8086
+    ports:
+      - "5000:5000"
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    networks:
+      - teg-net
+
+  influxdb:
+    image: influxdb:2.7-alpine
+    container_name: teg-influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_USERNAME:-admin}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_PASSWORD:-tegpassword123}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG:-UCV}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET:-lora_table}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_TOKEN:-secure_token}
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - teg-net
+
+volumes:
+  influxdb_data:
+    name: teg_influxdb_data
+
+networks:
+  teg-net:
+    name: teg_network

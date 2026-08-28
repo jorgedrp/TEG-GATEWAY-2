@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+
+# Python
+.venv
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Frontend
+webapp/frontend/node_modules/
+webapp/frontend/dist/
+webapp/app/static/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Base de datos y logs locales
+webapp/gateway.db
+webapp/gateway.db-wal
+webapp/gateway.db-shm
+*.log
+
+# Binarios C locales y objetos compilados
+gateway/*.o
+gateway/standby_mode
+gateway/event_mode
+gateway/time_mode
+gateway/config_mode
+gateway/detect_mode
+gateway/clock
+gateway/test_spi
+
+# Archivos del sistema y de entorno
+.DS_Store
+.env
+ARQUITECTURA_TECNICA.md
+webapp/datalog.csv

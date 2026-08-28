@@ -46,3 +46,4 @@ gateway/bin/
 .DS_Store
 Thumbs.db
 ARQUITECTURA_TECNICA.md
+webapp/datalog.csv
