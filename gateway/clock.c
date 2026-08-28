@@ -21,6 +21,7 @@ void send_initial_sync_trigger(uint8_t sensor, uint8_t mode)
 {
     uint8_t data[PAYLOAD_TX_LENGTH] = {BROADCAST_ID, CLOCK_SYNC, mode, 0xFF, 0xFF};
     size_t num_activos = 0;
+    size_t k = 0;
 
     for(size_t i = 0 ; i < num_sensores ; i++)
     {
@@ -45,8 +46,9 @@ void send_initial_sync_trigger(uint8_t sensor, uint8_t mode)
                 fflush(stdout);
                 printf("STATUS:%u:CLOCK\n", data[0]);
                 fflush(stdout);
-                sensor_list[i].dev_id = data[0];
+                sensor_list[k].dev_id = data[0];
                 num_activos++;
+                k++;
                 break;
             }
             else
@@ -83,6 +85,8 @@ void adjust_clock(void)
 
             retardo_milisegundos(1000);
         }
+        printf("STATUS:%u:STANDBY\n", sensor_list[i].dev_id);
+        fflush(stdout);
     }
 }
 
@@ -99,14 +103,13 @@ void adjust_skew(void)
         }
         k = (k + 1) % num_sensores;
 
-        if(num_sensores == 1)
-        {
-            retardo_milisegundos(5000);
-        }
-        else
-        {
-            retardo_milisegundos((5 - num_sensores) * 1000);
-        }
+        retardo_milisegundos((int)(5000 / num_sensores));
+    }
+
+    for (size_t i = 0; i < num_sensores; i++)
+    {
+        printf("STATUS:%u:STANDBY\n", sensor_list[i].dev_id);
+        fflush(stdout);
     }
 }
 
