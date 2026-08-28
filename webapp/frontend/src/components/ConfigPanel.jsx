@@ -119,7 +119,7 @@ export default function ConfigPanel({ onOpenSync, onCommandSent }) {
                 <Sliders className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-white">Parámetros de Medición OTA</h2>
+                <h2 className="text-base font-semibold text-white">Parámetros de medición</h2>
                 <p className="text-xs text-slate-400">Configuración remota dinámica sobre la red LoRa</p>
               </div>
             </div>
@@ -193,7 +193,7 @@ export default function ConfigPanel({ onOpenSync, onCommandSent }) {
             {/* Frecuencia y LoRa Dropdowns */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">Frecuencia de Muestreo</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">Frecuencia de muestreo</label>
                 <select
                   value={frecuencia}
                   onChange={(e) => setFrecuencia(e.target.value)}
@@ -232,7 +232,7 @@ export default function ConfigPanel({ onOpenSync, onCommandSent }) {
                 className="flex-1 flex items-center justify-center space-x-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-slate-950 font-semibold text-xs py-3 px-4 rounded-xl shadow-lg shadow-emerald-500/20 transition-all"
               >
                 <Send className="w-4 h-4" />
-                <span>Aplicar Configuración OTA</span>
+                <span>Aplicar Configuración</span>
               </button>
 
               <button
@@ -254,7 +254,7 @@ export default function ConfigPanel({ onOpenSync, onCommandSent }) {
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-2">
                 <Activity className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-sm font-semibold text-white">Estado de los Nodos</h3>
+                <h3 className="text-sm font-semibold text-white">Estado de los sensores</h3>
               </div>
               <button
                 onClick={handleDetect}
@@ -295,7 +295,7 @@ export default function ConfigPanel({ onOpenSync, onCommandSent }) {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
             <div className="flex items-center space-x-2 border-b border-slate-800 pb-3">
               <Radio className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-semibold text-white">Modos Operativos de Red</h3>
+              <h3 className="text-sm font-semibold text-white">Modos de operación</h3>
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
@@ -309,7 +309,7 @@ export default function ConfigPanel({ onOpenSync, onCommandSent }) {
                 }`}
               >
                 <span className="font-semibold text-sm">Standby</span>
-                <span className="text-[10px] text-slate-500">Bajo consumo</span>
+                <span className="text-[10px] text-slate-500">En reposo</span>
               </button>
 
               <button
@@ -335,7 +335,7 @@ export default function ConfigPanel({ onOpenSync, onCommandSent }) {
                 }`}
               >
                 <span className="font-semibold text-sm">Tiempo</span>
-                <span className="text-[10px] text-slate-500">Ventana continua</span>
+                <span className="text-[10px] text-slate-500">Disparo manual</span>
               </button>
 
               <button
@@ -348,7 +348,7 @@ export default function ConfigPanel({ onOpenSync, onCommandSent }) {
                 }`}
               >
                 <span className="font-semibold text-sm">Programado</span>
-                <span className="text-[10px] text-slate-500">Muestreo agendado</span>
+                <span className="text-[10px] text-slate-500">Disparo recurrente</span>
               </button>
             </div>
           </div>

@@ -26,7 +26,7 @@ export default function SyncModal({ isOpen, onClose, onSync, targetDevice }) {
         </div>
 
         <p className="text-sm text-slate-300">
-          Seleccione el algoritmo de sincronización temporal de precisión sub-milisegundo basado en timestamps por hardware:
+          Seleccione el algoritmo de sincronización temporal:
         </p>
 
         <div className="grid grid-cols-1 gap-3">
@@ -39,7 +39,7 @@ export default function SyncModal({ isOpen, onClose, onSync, targetDevice }) {
             </div>
             <div>
               <div className="font-medium text-white group-hover:text-emerald-400 transition-colors">Sincronización Simple</div>
-              <div className="text-xs text-slate-400 mt-0.5">Compensación rápida de desfase (Offset) de 1 ciclo.</div>
+              <div className="text-xs text-slate-400 mt-0.5">Compensación rápida de desfase (Offset).</div>
             </div>
           </button>
 
@@ -52,7 +52,7 @@ export default function SyncModal({ isOpen, onClose, onSync, targetDevice }) {
             </div>
             <div>
               <div className="font-medium text-emerald-300 group-hover:text-emerald-200 transition-colors">Sincronización Completa</div>
-              <div className="text-xs text-slate-400 mt-0.5">Estimación lineal de deriva (Skew) + Offset multietapa (Recomendado).</div>
+              <div className="text-xs text-slate-400 mt-0.5">Estimación lineal de deriva (Skew) + Offset.</div>
             </div>
           </button>
         </div>

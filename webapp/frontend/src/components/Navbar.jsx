@@ -18,7 +18,7 @@ export default function Navbar({ activeTab, setActiveTab, health, processStatus,
                   WSN-SHM v2.0
                 </span>
               </div>
-              <p className="text-xs text-slate-400">Structural Health Monitoring Gateway</p>
+              <p className="text-xs text-slate-400">Gateway de monitoreo de salud estructural</p>
             </div>
           </div>
 
@@ -57,7 +57,7 @@ export default function Navbar({ activeTab, setActiveTab, health, processStatus,
               }`}
             >
               <LineChart className="w-4 h-4" />
-              <span>Explorar DSP</span>
+              <span>Explorar</span>
             </button>
           </nav>
 

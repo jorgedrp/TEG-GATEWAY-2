@@ -57,8 +57,8 @@ export default function RegistryTable({ onExploreRecord }) {
       {/* Header & Controls */}
       <div className="p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-white">Registro de Mediciones y Eventos</h2>
-          <p className="text-xs text-slate-400">Historial de capturas de vibración y telemetría indexadas en SQLite</p>
+          <h2 className="text-lg font-semibold text-white">Registro de mediciones y eventos</h2>
+          <p className="text-xs text-slate-400">Historial de capturas registradas por los sensores</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

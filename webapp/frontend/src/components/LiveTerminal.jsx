@@ -76,7 +76,7 @@ export default function LiveTerminal({ onClearLogs }) {
       <div className="bg-slate-950 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <Terminal className="w-4 h-4 text-emerald-400" />
-          <span className="text-sm font-semibold text-white">Monitor de Operaciones LoRa</span>
+          <span className="text-sm font-semibold text-white">Monitor de actividades</span>
           <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
             {logs.length} líneas
           </span>
@@ -116,7 +116,7 @@ export default function LiveTerminal({ onClearLogs }) {
       <div className="flex-1 p-4 overflow-y-auto font-mono text-xs space-y-1 bg-slate-950/70">
         {logs.length === 0 ? (
           <div className="h-full flex items-center justify-center text-slate-600 italic">
-            Esperando eventos u órdenes del orquestador...
+            Esperando eventos u órdenes...
           </div>
         ) : (
           logs.map((log, index) => (

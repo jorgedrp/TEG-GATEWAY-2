@@ -153,7 +153,7 @@ export default function AnalyticsExplorer({ initialParams }) {
     series: [
       { label: 'Frecuencia (Hz)' },
       {
-        label: 'Magnitud (ACF)',
+        label: 'Magnitud',
         stroke: '#f43f5e',
         width: 1.5,
         fill: 'rgba(244, 63, 94, 0.12)',
@@ -304,7 +304,7 @@ export default function AnalyticsExplorer({ initialParams }) {
 
           {/* Canal / Eje */}
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">Canal / Variable</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">Canal</label>
             <select
               value={channel}
               onChange={(e) => setChannel(e.target.value)}
@@ -429,7 +429,7 @@ export default function AnalyticsExplorer({ initialParams }) {
               {telemetryData.frequencySeries.peak_frequency} Hz
             </span>
           </div>
-          <span className="text-slate-400 hidden sm:inline">Espectro FFT con ventaneo Hann y corrección ACF (uPlot ⚡)</span>
+          <span className="text-slate-400 hidden sm:inline">Espectro FFT con aventanamiento Hann y corrección ACF</span>
         </div>
       )}
 
@@ -437,7 +437,7 @@ export default function AnalyticsExplorer({ initialParams }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard
           title={`Registro en el Tiempo (${channel.toUpperCase()})`}
-          subtitle="Señal de aceleración / giroscopio de alta frecuencia (uPlot ⚡)"
+          subtitle="Señal de aceleración / giroscopio de alta frecuencia"
           data={timeChartData}
           options={timeChartOptions}
           height={260}
