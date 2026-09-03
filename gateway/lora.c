@@ -236,7 +236,17 @@ static void* gpiod_irq_thread(void* arg)
         rv = gpiod_line_event_read(line, &event);
         if (rv == 0) {
             if (event.event_type == GPIOD_LINE_EVENT_RISING_EDGE) {
-                t2_hardware_us = (uint64_t)event.ts.tv_sec * 1000000ULL + (event.ts.tv_nsec / 1000ULL);
+                struct timespec ts_real, ts_mono;
+                clock_gettime(CLOCK_REALTIME, &ts_real);
+                clock_gettime(CLOCK_MONOTONIC, &ts_mono);
+
+                // Convertir la marca de hardware monotónica a tiempo real (RTC)
+                uint64_t mono_event_us = (uint64_t)event.ts.tv_sec * 1000000ULL + (event.ts.tv_nsec / 1000ULL);
+                uint64_t current_mono_us = (uint64_t)ts_mono.tv_sec * 1000000ULL + (ts_mono.tv_nsec / 1000ULL);
+                uint64_t current_real_us = (uint64_t)ts_real.tv_sec * 1000000ULL + (ts_real.tv_nsec / 1000ULL);
+
+                // t2_hardware_us en base CLOCK_REALTIME (RTC)
+                t2_hardware_us = current_real_us - (current_mono_us - mono_event_us);
                 sem_post(&lora_irq);
             }
         }
